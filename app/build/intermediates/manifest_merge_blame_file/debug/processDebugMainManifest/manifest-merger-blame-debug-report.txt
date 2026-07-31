@@ -1,0 +1,191 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.jo.notubeplayer"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="35" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:5:5-67
+11-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:5:22-64
+12    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+12-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:6:5-79
+12-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:6:22-76
+13    <uses-permission
+13-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:7:5-9:40
+14        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+14-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:7:22-78
+15        android:maxSdkVersion="28" />
+15-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:8:9-35
+16    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+16-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:10:5-77
+16-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:10:22-74
+17
+18    <permission
+18-->[androidx.core:core:1.15.0] C:\Users\jo\.gradle\caches\8.9\transforms\3e85dc3a27e7bbf172ac49206d18ddee\transformed\core-1.15.0\AndroidManifest.xml:22:5-24:47
+19        android:name="com.jo.notubeplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+19-->[androidx.core:core:1.15.0] C:\Users\jo\.gradle\caches\8.9\transforms\3e85dc3a27e7bbf172ac49206d18ddee\transformed\core-1.15.0\AndroidManifest.xml:23:9-81
+20        android:protectionLevel="signature" />
+20-->[androidx.core:core:1.15.0] C:\Users\jo\.gradle\caches\8.9\transforms\3e85dc3a27e7bbf172ac49206d18ddee\transformed\core-1.15.0\AndroidManifest.xml:24:9-44
+21
+22    <uses-permission android:name="com.jo.notubeplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+22-->[androidx.core:core:1.15.0] C:\Users\jo\.gradle\caches\8.9\transforms\3e85dc3a27e7bbf172ac49206d18ddee\transformed\core-1.15.0\AndroidManifest.xml:26:5-97
+22-->[androidx.core:core:1.15.0] C:\Users\jo\.gradle\caches\8.9\transforms\3e85dc3a27e7bbf172ac49206d18ddee\transformed\core-1.15.0\AndroidManifest.xml:26:22-94
+23
+24    <application
+24-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:12:5-54:19
+25        android:allowBackup="true"
+25-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:13:9-35
+26        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+26-->[androidx.core:core:1.15.0] C:\Users\jo\.gradle\caches\8.9\transforms\3e85dc3a27e7bbf172ac49206d18ddee\transformed\core-1.15.0\AndroidManifest.xml:28:18-86
+27        android:debuggable="true"
+28        android:extractNativeLibs="false"
+29        android:icon="@mipmap/ic_launcher"
+29-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:14:9-43
+30        android:label="@string/app_name"
+30-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:15:9-41
+31        android:networkSecurityConfig="@xml/network_security_config"
+31-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:20:9-69
+32        android:roundIcon="@mipmap/ic_launcher_round"
+32-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:16:9-54
+33        android:supportsRtl="true"
+33-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:17:9-35
+34        android:theme="@style/Theme.NoTubePlayer"
+34-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:18:9-50
+35        android:usesCleartextTraffic="false" >
+35-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:19:9-45
+36        <activity
+36-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:22:9-42:20
+37            android:name="com.jo.notubeplayer.MainActivity"
+37-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:23:13-41
+38            android:configChanges="orientation|screenSize|keyboardHidden"
+38-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:25:13-74
+39            android:exported="true"
+39-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:24:13-36
+40            android:launchMode="singleTask" >
+40-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:26:13-44
+41            <intent-filter>
+41-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:27:13-30:29
+42                <action android:name="android.intent.action.MAIN" />
+42-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:28:17-69
+42-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:28:25-66
+43
+44                <category android:name="android.intent.category.LAUNCHER" />
+44-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:29:17-77
+44-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:29:27-74
+45            </intent-filter>
+46
+47            <!--
+48                 Browser candidate: any http/https link from another app routes here.
+49                 onCreate / onNewIntent decides whether to load it (allowlist) or
+50                 show the "not allowed" overlay.
+51            -->
+52            <intent-filter>
+52-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:35:13-41:29
+53                <action android:name="android.intent.action.VIEW" />
+53-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:36:17-69
+53-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:36:25-66
+54
+55                <category android:name="android.intent.category.DEFAULT" />
+55-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:37:17-76
+55-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:37:27-73
+56                <category android:name="android.intent.category.BROWSABLE" />
+56-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:38:17-78
+56-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:38:27-75
+57
+58                <data android:scheme="http" />
+58-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:39:17-47
+58-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:39:23-44
+59                <data android:scheme="https" />
+59-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:39:17-47
+59-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:39:23-44
+60            </intent-filter>
+61        </activity>
+62
+63        <provider
+64            android:name="androidx.core.content.FileProvider"
+64-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:45:13-62
+65            android:authorities="com.jo.notubeplayer.fileprovider"
+65-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:46:13-64
+66            android:exported="false"
+66-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:47:13-37
+67            android:grantUriPermissions="true" >
+67-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:48:13-47
+68            <meta-data
+68-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:49:13-51:54
+69                android:name="android.support.FILE_PROVIDER_PATHS"
+69-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:50:17-67
+70                android:resource="@xml/file_paths" />
+70-->C:\Users\jo\Documents\litlle app project\webview_project\app\src\main\AndroidManifest.xml:51:17-51
+71        </provider>
+72        <provider
+72-->[androidx.emoji2:emoji2:1.3.0] C:\Users\jo\.gradle\caches\8.9\transforms\268b965e38ac6c3d7965eb62437bdecd\transformed\emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
+73            android:name="androidx.startup.InitializationProvider"
+73-->[androidx.emoji2:emoji2:1.3.0] C:\Users\jo\.gradle\caches\8.9\transforms\268b965e38ac6c3d7965eb62437bdecd\transformed\emoji2-1.3.0\AndroidManifest.xml:25:13-67
+74            android:authorities="com.jo.notubeplayer.androidx-startup"
+74-->[androidx.emoji2:emoji2:1.3.0] C:\Users\jo\.gradle\caches\8.9\transforms\268b965e38ac6c3d7965eb62437bdecd\transformed\emoji2-1.3.0\AndroidManifest.xml:26:13-68
+75            android:exported="false" >
+75-->[androidx.emoji2:emoji2:1.3.0] C:\Users\jo\.gradle\caches\8.9\transforms\268b965e38ac6c3d7965eb62437bdecd\transformed\emoji2-1.3.0\AndroidManifest.xml:27:13-37
+76            <meta-data
+76-->[androidx.emoji2:emoji2:1.3.0] C:\Users\jo\.gradle\caches\8.9\transforms\268b965e38ac6c3d7965eb62437bdecd\transformed\emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
+77                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+77-->[androidx.emoji2:emoji2:1.3.0] C:\Users\jo\.gradle\caches\8.9\transforms\268b965e38ac6c3d7965eb62437bdecd\transformed\emoji2-1.3.0\AndroidManifest.xml:30:17-75
+78                android:value="androidx.startup" />
+78-->[androidx.emoji2:emoji2:1.3.0] C:\Users\jo\.gradle\caches\8.9\transforms\268b965e38ac6c3d7965eb62437bdecd\transformed\emoji2-1.3.0\AndroidManifest.xml:31:17-49
+79            <meta-data
+79-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\jo\.gradle\caches\8.9\transforms\36c498859f8ef032ab3bccbc4ca6ea99\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:29:13-31:52
+80                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+80-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\jo\.gradle\caches\8.9\transforms\36c498859f8ef032ab3bccbc4ca6ea99\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:30:17-78
+81                android:value="androidx.startup" />
+81-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\jo\.gradle\caches\8.9\transforms\36c498859f8ef032ab3bccbc4ca6ea99\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:31:17-49
+82            <meta-data
+82-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
+83                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+83-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
+84                android:value="androidx.startup" />
+84-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
+85        </provider>
+86
+87        <receiver
+87-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
+88            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+88-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
+89            android:directBootAware="false"
+89-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
+90            android:enabled="true"
+90-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
+91            android:exported="true"
+91-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
+92            android:permission="android.permission.DUMP" >
+92-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
+93            <intent-filter>
+93-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
+94                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+94-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
+94-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
+95            </intent-filter>
+96            <intent-filter>
+96-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
+97                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+97-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
+97-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
+98            </intent-filter>
+99            <intent-filter>
+99-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
+100                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+100-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
+100-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
+101            </intent-filter>
+102            <intent-filter>
+102-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
+103                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+103-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
+103-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\jo\.gradle\caches\8.9\transforms\3cc3ab78dc9af0d267f82d11f11d6bec\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
+104            </intent-filter>
+105        </receiver>
+106    </application>
+107
+108</manifest>

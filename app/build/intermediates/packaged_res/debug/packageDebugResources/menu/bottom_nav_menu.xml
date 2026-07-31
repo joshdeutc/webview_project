@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_notube"
+        android:icon="@drawable/ic_music"
+        android:title="@string/nav_notube" />
+    <item
+        android:id="@+id/nav_discord"
+        android:icon="@drawable/ic_chat"
+        android:title="@string/nav_discord" />
+    <item
+        android:id="@+id/nav_berserk"
+        android:icon="@drawable/ic_book"
+        android:title="@string/nav_berserk" />
+    <item
+        android:id="@+id/nav_doctolib"
+        android:icon="@drawable/ic_medical"
+        android:title="@string/nav_doctolib" />
+</menu>

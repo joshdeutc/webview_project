@@ -1,0 +1,12 @@
+appId: com.jo.notubeplayer
+---
+- launchApp:
+    clearState: true
+- tapOn: "Recettes"
+- extendedWaitUntil:
+    visible: "Recettes"
+    timeout: 5000
+- scroll
+- tapOn: # Tentative de clic au centre de l'écran sur une recette
+    point: 50%, 50%
+- scroll
