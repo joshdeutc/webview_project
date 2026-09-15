@@ -3,10 +3,6 @@
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">notube.net</domain>
         <domain includeSubdomains="true">notube.io</domain>
-        <domain includeSubdomains="true">discord.com</domain>
-        <domain includeSubdomains="true">discord.gg</domain>
-        <domain includeSubdomains="true">discordapp.com</domain>
-        <domain includeSubdomains="true">discordapp.net</domain>
         <domain includeSubdomains="true">readberserk.com</domain>
         <domain includeSubdomains="true">doctolib.fr</domain>
     </domain-config>

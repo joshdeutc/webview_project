@@ -5,10 +5,6 @@
         android:icon="@drawable/ic_music"
         android:title="@string/nav_notube" />
     <item
-        android:id="@+id/nav_discord"
-        android:icon="@drawable/ic_chat"
-        android:title="@string/nav_discord" />
-    <item
         android:id="@+id/nav_berserk"
         android:icon="@drawable/ic_book"
         android:title="@string/nav_berserk" />

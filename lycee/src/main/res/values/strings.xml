@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">MonLycée</string>
+    <string name="loading">Chargement…</string>
+    <string name="no_internet">Pas de connexion Internet</string>
+    <string name="retry">Réessayer</string>
+    <string name="go_home">Retour à l\'accueil</string>
+    <string name="external_url_not_allowed">🚫 Le domaine \"%1$s\" n\'est pas dans votre liste autorisée.</string>
+</resources>

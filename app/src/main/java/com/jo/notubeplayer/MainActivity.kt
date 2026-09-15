@@ -1,14 +1,12 @@
 package com.jo.notubeplayer
 
 import android.Manifest
-import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.ConnectivityManager
@@ -17,8 +15,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.os.Handler
-import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -26,54 +22,47 @@ import android.webkit.*
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
-import android.widget.LinearLayout
+import android.app.Activity
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.ByteArrayInputStream
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val NOTUBE_URL = "https://notube.net/"
-        private const val DISCORD_URL = "https://discord.com/app"
         private const val BERSERK_URL = "https://readberserk.com/"
         private const val DOCTOLIB_URL = "https://www.doctolib.fr/"
         private const val SNCF_URL = "https://www.sncf-connect.com/"
         private const val MARMITON_URL = "https://www.marmiton.org/"
+        private const val INSTAGRAM_URL = "https://www.instagram.com/"
+
+        // Le fil des comptes suivis, chronologique, au lieu de l'accueil algorithmique.
+        // Imposé par l'URL d'entrée plutôt qu'en JS : une redirection répétée en boucle
+        // risquerait de se battre avec le routeur d'Instagram et de figer la page.
+        private const val INSTAGRAM_FEED_URL = "https://www.instagram.com/?variant=following"
         private const val NOTIFICATION_PERMISSION_CODE = 1001
 
-        // Logging tags — filter with: adb logcat -s NTP_NAV,NTP_BLOCK,NTP_INTENT,NTP_DISCORD,NTP_AD
+        // Logging tags — filter with: adb logcat -s NTP_NAV,NTP_BLOCK,NTP_INTENT,NTP_AD
         private const val TAG_NAV     = "NTP_NAV"
         private const val TAG_BLOCK   = "NTP_BLOCK"
         private const val TAG_INTENT  = "NTP_INTENT"
-        private const val TAG_DISCORD = "NTP_DISCORD"
         private const val TAG_AD      = "NTP_AD"
 
-        private const val PREFS_NAME = "NoTubePrefsV6"
-        private const val PREF_LAST_DATE = "last_date"
-        private const val PREF_DISCORD_SESSION_START_MS = "discord_session_start_ms"
-        private const val PREF_DISCORD_SESSIONS_USED = "discord_sessions_used"
-
-        private const val DISCORD_SESSION_LIMIT_MS = 5 * 60 * 1000L // 5 minutes
-        private const val DISCORD_WAIT_TIME_MS = 4 * 60 * 60 * 1000L // 4 hours
-        private const val DISCORD_DAILY_SESSIONS_LIMIT = 3 // 3 sessions of 5 mins = 15 mins total
-
+        // Discord vit désormais dans son app dédiée (com.jo.discordpersonal), avec ses
+        // propres quotas. Plus rien ici ne le concerne : ni domaine, ni bouton, ni timer.
         private val ALLOWED_DOMAINS = listOf(
             "notube.net",
             "notube.io",
-            "discord.com",
-            "discord.gg",
-            "discordapp.com",
-            "discordapp.net",
             "readberserk.com",
             "doctolib.fr",
             "appconsent.io",
@@ -83,7 +72,13 @@ class MainActivity : AppCompatActivity() {
             "google.com",
             "sncf-connect.com",
             "sncf.com",
-            "marmiton.org"
+            "marmiton.org",
+            // Instagram + ses CDN/hôtes de connexion (les médias sont filtrés plus bas,
+            // mais les domaines doivent rester joignables pour le login et le HTML.)
+            "instagram.com",
+            "cdninstagram.com",
+            "fbcdn.net",
+            "facebook.com"
         )
 
         // Matche "notube.<tld>" et "<sous-domaine>.notube.<tld>", quel que soit le TLD,
@@ -98,26 +93,21 @@ class MainActivity : AppCompatActivity() {
     private lateinit var splashOverlay: FrameLayout
     private lateinit var blockedOverlay: FrameLayout
     private lateinit var errorOverlay: FrameLayout
-    private lateinit var timerIndicator: TextView
     private lateinit var blockedMessage: TextView
     private lateinit var blockedIcon: TextView
     private lateinit var bottomMenuScroll: HorizontalScrollView
-    
+
     // Bottom Buttons
     private lateinit var btnNavNotube: Button
-    private lateinit var btnNavDiscord: Button
     private lateinit var btnNavBerserk: Button
     private lateinit var btnNavDoctolib: Button
     private lateinit var btnNavSncf: Button
     private lateinit var btnNavMarmiton: Button
+    private lateinit var btnNavInstagram: Button
 
     private var webViewBasePaddingBottom: Int = 0
     private var progressAnimator: android.animation.ValueAnimator? = null
-    private lateinit var prefs: SharedPreferences
 
-    // Timer components
-    private val handler = Handler(Looper.getMainLooper())
-    private var isTimerRunning = false
     private var currentMainUrl: String = ""
 
     private val downloadReceiver = object : BroadcastReceiver() {
@@ -128,52 +118,44 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val timerRunnable = object : Runnable {
-        @SuppressLint("DefaultLocale")
-        override fun run() {
-            val currentTime = System.currentTimeMillis()
-            if (isCurrentUrlDiscord(currentMainUrl) && blockedOverlay.visibility == View.GONE) {
-                val sessionStart = prefs.getLong(PREF_DISCORD_SESSION_START_MS, 0L)
-                val sessionEnd = sessionStart + DISCORD_SESSION_LIMIT_MS
-                
-                if (currentTime >= sessionEnd) {
-                    blockDiscordDueToTime()
-                } else {
-                    val sessionsUsed = prefs.getInt(PREF_DISCORD_SESSIONS_USED, 0)
-                    updateTimerUI(sessionEnd - currentTime, sessionsUsed)
+    private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
+    private val fileChooserLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val intentData = result.data
+            val uris: Array<Uri>? = when {
+                intentData?.clipData != null -> {
+                    val clip = intentData.clipData!!
+                    Array(clip.itemCount) { i -> clip.getItemAt(i).uri }
                 }
-            } else if (blockedOverlay.visibility == View.VISIBLE) {
-                val sessionStart = prefs.getLong(PREF_DISCORD_SESSION_START_MS, 0L)
-                val sessionsUsed = prefs.getInt(PREF_DISCORD_SESSIONS_USED, 0)
-                val sessionEnd = sessionStart + DISCORD_SESSION_LIMIT_MS
-                val cooldownEnd = sessionEnd + DISCORD_WAIT_TIME_MS
-                
-                if (sessionsUsed >= DISCORD_DAILY_SESSIONS_LIMIT) {
-                    blockedMessage.text = getString(R.string.discord_daily_limit_reached)
-                } else if (currentTime < cooldownEnd) {
-                    val remainingCooldown = cooldownEnd - currentTime
-                    val hours = (remainingCooldown / 1000) / 3600
-                    val minutes = ((remainingCooldown / 1000) % 3600) / 60
-                    val seconds = (remainingCooldown / 1000) % 60
-                    val timeStr = String.format("%02d:%02d:%02d", hours, minutes, seconds)
-                    blockedMessage.text = getString(R.string.discord_session_limit_reached, timeStr)
-                } else {
-                    // Cooldown has passed, they can go back to discord
-                    blockedMessage.text = getString(R.string.discord_ready)
+                intentData?.data != null -> {
+                    arrayOf(intentData.data!!)
                 }
+                else -> null
             }
-            if (isTimerRunning || blockedOverlay.visibility == View.VISIBLE) {
-                handler.postDelayed(this, 1000L)
-            }
+            fileUploadCallback?.onReceiveValue(uris)
+        } else {
+            fileUploadCallback?.onReceiveValue(null)
         }
+        fileUploadCallback = null
+    }
+
+    private var pendingAudioPermissionRequest: PermissionRequest? = null
+    private val requestAudioLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            pendingAudioPermissionRequest?.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
+        } else {
+            pendingAudioPermissionRequest?.deny()
+        }
+        pendingAudioPermissionRequest = null
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        checkAndResetDailyTimer()
 
         setupEdgeToEdge()
         bindViews()
@@ -207,7 +189,7 @@ class MainActivity : AppCompatActivity() {
     /**
      * If [intent] is an `ACTION_VIEW` for an http(s) URL, route it through the
      * domain allowlist:
-     *   - allowed → load it (or trigger Discord session logic for Discord URLs)
+     *   - allowed → load it
      *   - blocked → show the "domain not allowed" overlay and load NoTube in the
      *     background so the user has something when they tap "Back".
      *
@@ -234,61 +216,8 @@ class MainActivity : AppCompatActivity() {
 
         android.util.Log.i(TAG_INTENT, "ALLOWED external intent: $url")
 
-        // Discord has its own per-unlock session logic — let loadDiscord() apply it.
-        if (isCurrentUrlDiscord(url)) {
-            android.util.Log.i(TAG_INTENT, "Routing to Discord session handler")
-            loadDiscord()
-            return true
-        }
-
         webView.loadUrl(url)
         return true
-    }
-
-    private fun checkAndResetDailyTimer() {
-        val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        val lastDate = prefs.getString(PREF_LAST_DATE, "")
-
-        if (currentDate != lastDate) {
-            // New day, reset timer
-            prefs.edit()
-                .putString(PREF_LAST_DATE, currentDate)
-                .putLong(PREF_DISCORD_SESSION_START_MS, 0L)
-                .putInt(PREF_DISCORD_SESSIONS_USED, 0)
-                .apply()
-        }
-    }
-
-    enum class DiscordAccessState { ALLOWED, COOLDOWN, DAILY_LIMIT_REACHED, CAN_START_NEW_SESSION }
-
-    private fun checkDiscordAccess(): DiscordAccessState {
-        val currentTime = System.currentTimeMillis()
-        val sessionStart = prefs.getLong(PREF_DISCORD_SESSION_START_MS, 0L)
-        val sessionsUsed = prefs.getInt(PREF_DISCORD_SESSIONS_USED, 0)
-
-        // No session ever started or very first time
-        if (sessionStart == 0L) return DiscordAccessState.CAN_START_NEW_SESSION
-
-        val sessionEnd = sessionStart + DISCORD_SESSION_LIMIT_MS
-        val cooldownEnd = sessionEnd + DISCORD_WAIT_TIME_MS
-
-        // Within the active 5 minute block
-        if (currentTime < sessionEnd) {
-            return DiscordAccessState.ALLOWED
-        }
-
-        // 5 minute block is over, but still in cooldown
-        if (currentTime < cooldownEnd) {
-            return DiscordAccessState.COOLDOWN
-        }
-
-        // Cooldown is over, checking daily limit
-        if (sessionsUsed >= DISCORD_DAILY_SESSIONS_LIMIT) {
-            return DiscordAccessState.DAILY_LIMIT_REACHED
-        }
-
-        // Cooldown over and daily limit not reached
-        return DiscordAccessState.CAN_START_NEW_SESSION
     }
 
     private fun setupEdgeToEdge() {
@@ -297,13 +226,21 @@ class MainActivity : AppCompatActivity() {
             isAppearanceLightStatusBars = false
             isAppearanceLightNavigationBars = false
         }
+        val rootLayout = findViewById<View>(R.id.rootLayout)
+        ViewCompat.setOnApplyWindowInsetsListener(rootLayout) { view, windowInsets ->
+            val insets = windowInsets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(insets.left, insets.top, insets.right, insets.bottom)
+            windowInsets
+        }
     }
 
     private fun bindViews() {
         webView = findViewById(R.id.webView)
         webViewBasePaddingBottom = webView.paddingBottom
         fabRefresh = findViewById(R.id.fabRefresh)
-        
+
         fabRefresh.setOnClickListener {
             webView.reload()
         }
@@ -313,17 +250,16 @@ class MainActivity : AppCompatActivity() {
         splashOverlay = findViewById(R.id.splashOverlay)
         blockedOverlay = findViewById(R.id.blockedOverlay)
         errorOverlay = findViewById(R.id.errorOverlay)
-        timerIndicator = findViewById(R.id.timerIndicator)
         blockedMessage = findViewById(R.id.blockedMessage)
         blockedIcon = findViewById(R.id.blockedIcon)
         bottomMenuScroll = findViewById(R.id.bottomMenuScroll)
-        
+
         btnNavNotube = findViewById(R.id.btnNavNotube)
-        btnNavDiscord = findViewById(R.id.btnNavDiscord)
         btnNavBerserk = findViewById(R.id.btnNavBerserk)
         btnNavDoctolib = findViewById(R.id.btnNavDoctolib)
         btnNavSncf = findViewById(R.id.btnNavSncf)
         btnNavMarmiton = findViewById(R.id.btnNavMarmiton)
+        btnNavInstagram = findViewById(R.id.btnNavInstagram)
 
         findViewById<View>(R.id.btnGoBack).setOnClickListener {
             blockedOverlay.visibility = View.GONE
@@ -342,46 +278,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupScrollableMenu() {
         btnNavNotube.setOnClickListener { loadNotube() }
-        btnNavDiscord.setOnClickListener { loadDiscord() }
         btnNavBerserk.setOnClickListener { webView.loadUrl(BERSERK_URL) }
         btnNavDoctolib.setOnClickListener { webView.loadUrl(DOCTOLIB_URL) }
         btnNavSncf.setOnClickListener { webView.loadUrl(SNCF_URL) }
         btnNavMarmiton.setOnClickListener { webView.loadUrl(MARMITON_URL) }
+        btnNavInstagram.setOnClickListener { webView.loadUrl(INSTAGRAM_FEED_URL) }
     }
-    
+
     private fun loadNotube() {
         webView.loadUrl(NOTUBE_URL)
-    }
-    
-    private fun loadDiscord() {
-        val accessState = checkDiscordAccess()
-        android.util.Log.i(TAG_DISCORD, "loadDiscord called, state=$accessState")
-        when (accessState) {
-            DiscordAccessState.CAN_START_NEW_SESSION -> {
-                val sessionsUsed = prefs.getInt(PREF_DISCORD_SESSIONS_USED, 0)
-                prefs.edit()
-                    .putLong(PREF_DISCORD_SESSION_START_MS, System.currentTimeMillis())
-                    .putInt(PREF_DISCORD_SESSIONS_USED, sessionsUsed + 1)
-                    .apply()
-                android.util.Log.i(TAG_DISCORD, "SESSION_START sessions_used=${sessionsUsed + 1}/$DISCORD_DAILY_SESSIONS_LIMIT")
-                webView.loadUrl(DISCORD_URL)
-            }
-            DiscordAccessState.ALLOWED -> {
-                android.util.Log.i(TAG_DISCORD, "SESSION_RESUME (still within 5min window)")
-                webView.loadUrl(DISCORD_URL)
-            }
-            DiscordAccessState.COOLDOWN -> {
-                val sessionStart = prefs.getLong(PREF_DISCORD_SESSION_START_MS, 0L)
-                val cooldownEnd = sessionStart + DISCORD_SESSION_LIMIT_MS + DISCORD_WAIT_TIME_MS
-                val remainingMs = cooldownEnd - System.currentTimeMillis()
-                android.util.Log.w(TAG_DISCORD, "BLOCKED cooldown, remaining=${remainingMs / 1000}s")
-                blockDiscordDueToTime()
-            }
-            DiscordAccessState.DAILY_LIMIT_REACHED -> {
-                android.util.Log.w(TAG_DISCORD, "BLOCKED daily limit reached ($DISCORD_DAILY_SESSIONS_LIMIT sessions)")
-                blockDiscordDueToTime()
-            }
-        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -438,8 +343,46 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun isCurrentUrlDiscord(urlToCheck: String = currentMainUrl): Boolean {
-        return urlToCheck.contains("discord.com") || urlToCheck.contains("discord.gg") || urlToCheck.contains("discordapp")
+    /**
+     * Instagram est le seul site de cette app dont on coupe images et vidéos.
+     */
+    private fun isCurrentUrlInstagram(urlToCheck: String = currentMainUrl): Boolean {
+        return urlToCheck.contains("instagram.com") || urlToCheck.contains("cdninstagram.com")
+    }
+
+    /**
+     * Vrai uniquement pour une vraie ressource média (photo/vidéo).
+     *
+     * On teste l'extension du *chemin* et non l'URL entière : Instagram sert ses
+     * bundles JS/CSS depuis static.cdninstagram.com, et un `url.contains(".png")`
+     * naïf finissait par tuer des scripts dont l'URL contenait ces caractères.
+     * Sans son JS, Instagram se charge mais reste figé sur l'accueil.
+     */
+    private fun isMediaResource(url: String): Boolean {
+        val path = try {
+            Uri.parse(url).path?.lowercase() ?: ""
+        } catch (e: Exception) {
+            return false
+        }
+        val mediaExtensions = listOf(
+            ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp",
+            ".mp4", ".webm", ".mov", ".m4v"
+        )
+        return mediaExtensions.any { path.endsWith(it) }
+    }
+
+    /**
+     * Hôtes qui ne servent QUE des médias — on peut les couper entièrement.
+     * Attention : ni `cdninstagram.com` ni `fbcdn.net` en entier, ils servent
+     * aussi le JS/CSS. Seuls les sous-domaines `scontent*` portent les photos.
+     */
+    private fun isMediaOnlyHost(url: String): Boolean {
+        val host = try {
+            Uri.parse(url).host?.lowercase() ?: return false
+        } catch (e: Exception) {
+            return false
+        }
+        return host.startsWith("scontent")
     }
 
     private fun applyMarmitonWindowInset(url: String) {
@@ -455,8 +398,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun isAudioRequest(request: WebResourceRequest): Boolean {
+        val headers = request.requestHeaders ?: emptyMap()
+        val secFetchDest = (headers["Sec-Fetch-Dest"] ?: headers["sec-fetch-dest"] ?: "").lowercase()
+        if (secFetchDest == "audio") return true
+
+        val accept = (headers["Accept"] ?: headers["accept"] ?: "").lowercase()
+        if (accept.contains("audio")) return true
+
+        val url = request.url.toString().lowercase()
+        return url.contains("audioclip") ||
+               url.contains("audio_clip") ||
+               url.contains("/audio") ||
+               url.contains("audio") ||
+               url.contains(".m4a") ||
+               url.contains(".aac") ||
+               url.contains(".mp3") ||
+               url.contains(".wav") ||
+               url.contains(".ogg") ||
+               url.contains("voice_message") ||
+               url.contains("voicenote")
+    }
+
     private inner class NoTubeWebViewClient : WebViewClient() {
-        
+
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
             val url = request.url.toString()
 
@@ -488,16 +453,17 @@ class MainActivity : AppCompatActivity() {
                     return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream("".toByteArray()))
                 }
             }
-            
-            // Block images and videos if on Discord
-            if (isCurrentUrlDiscord(currentMainUrl)) {
-                val isMediaUrl = url.contains("cdn.discordapp.com/attachments") ||
-                                 url.contains(".png") || url.contains(".jpg") || 
-                                 url.contains(".jpeg") || url.contains(".gif") || 
-                                 url.contains(".webp") || url.contains(".mp4") || 
-                                 url.contains(".webm") || url.contains("media.discordapp.net")
-                
-                if (isMediaUrl) {
+
+            // Sur Instagram : on coupe images et vidéos pour ne garder que le texte.
+            // On autorise impérativement les messages oraux / vocaux (audio).
+            // Le JS et le CSS doivent passer, sinon Instagram (SPA React) reste figé.
+            if (isCurrentUrlInstagram(currentMainUrl)) {
+                if (isAudioRequest(request)) {
+                    android.util.Log.d(TAG_NAV, "ALLOWED audio resource on Instagram: $url")
+                    return super.shouldInterceptRequest(view, request)
+                }
+                if (isMediaOnlyHost(url) || isMediaResource(url)) {
+                    android.util.Log.d(TAG_AD, "BLOCKED media (site sans images): $url")
                     return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream("".toByteArray()))
                 }
             }
@@ -527,41 +493,8 @@ class MainActivity : AppCompatActivity() {
             errorOverlay.visibility = View.GONE
             applyMarmitonWindowInset(url)
 
-            val isDiscord = isCurrentUrlDiscord(url)
-            
-            // Disable loading network images globally when on discord
-            webView.settings.blockNetworkImage = isDiscord
-            
-            if (isDiscord) {
-                val accessState = checkDiscordAccess()
-                when (accessState) {
-                    DiscordAccessState.CAN_START_NEW_SESSION -> {
-                        val sessionsUsed = prefs.getInt(PREF_DISCORD_SESSIONS_USED, 0)
-                        prefs.edit()
-                            .putLong(PREF_DISCORD_SESSION_START_MS, System.currentTimeMillis())
-                            .putInt(PREF_DISCORD_SESSIONS_USED, sessionsUsed + 1)
-                            .apply()
-
-                        timerIndicator.visibility = View.VISIBLE
-                        updateTimerUI(DISCORD_SESSION_LIMIT_MS, sessionsUsed + 1)
-                        if (!isTimerRunning) startTimer()
-                    }
-                    DiscordAccessState.ALLOWED -> {
-                        timerIndicator.visibility = View.VISIBLE
-                        val sessionStart = prefs.getLong(PREF_DISCORD_SESSION_START_MS, 0L)
-                        val sessionsUsed = prefs.getInt(PREF_DISCORD_SESSIONS_USED, 0)
-                        updateTimerUI((sessionStart + DISCORD_SESSION_LIMIT_MS) - System.currentTimeMillis(), sessionsUsed)
-                        if (!isTimerRunning) startTimer()
-                    }
-                    DiscordAccessState.COOLDOWN, DiscordAccessState.DAILY_LIMIT_REACHED -> {
-                        view.stopLoading()
-                        blockDiscordDueToTime()
-                    }
-                }
-            } else {
-                timerIndicator.visibility = View.GONE
-                stopTimer()
-            }
+            // Coupe le chargement des images côté WebView sur Instagram.
+            webView.settings.blockNetworkImage = isCurrentUrlInstagram(url)
         }
 
         override fun onPageFinished(view: WebView, url: String) {
@@ -614,40 +547,47 @@ class MainActivity : AppCompatActivity() {
             customView = null
             customViewCallback = null
         }
-    }
 
-    // ─── Timer Logic ─────────────────────────────────────────────────────
+        override fun onShowFileChooser(
+            webView: WebView?,
+            filePathCallback: ValueCallback<Array<Uri>>?,
+            fileChooserParams: FileChooserParams?
+        ): Boolean {
+            fileUploadCallback?.onReceiveValue(null)
+            fileUploadCallback = filePathCallback
 
-    private fun startTimer() {
-        if (!isTimerRunning) {
-            isTimerRunning = true
-            handler.post(timerRunnable)
+            val intent = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "*/*"
+            }
+
+            return try {
+                fileChooserLauncher.launch(intent)
+                true
+            } catch (e: Exception) {
+                android.util.Log.e(TAG_NAV, "Erreur ouverture sélecteur de fichier", e)
+                fileUploadCallback?.onReceiveValue(null)
+                fileUploadCallback = null
+                false
+            }
         }
-    }
 
-    private fun stopTimer() {
-        isTimerRunning = false
-        handler.removeCallbacks(timerRunnable)
-    }
-
-    @SuppressLint("DefaultLocale")
-    private fun updateTimerUI(remainingActiveMs: Long, sessionsUsed: Int) {
-        val minutes = (remainingActiveMs / 1000) / 60
-        val seconds = (remainingActiveMs / 1000) % 60
-        val timeStr = String.format("%02d:%02d", minutes, seconds)
-        val sessionsLeft = DISCORD_DAILY_SESSIONS_LIMIT - sessionsUsed
-        timerIndicator.text = getString(R.string.time_remaining, timeStr, sessionsLeft)
-    }
-
-    private fun blockDiscordDueToTime() {
-        if (!isTimerRunning) startTimer()
-        timerIndicator.visibility = View.GONE
-        
-        val sessionsUsed = prefs.getInt(PREF_DISCORD_SESSIONS_USED, 0)
-        if (sessionsUsed >= DISCORD_DAILY_SESSIONS_LIMIT) {
-            showBlockedOverlay(getString(R.string.discord_daily_limit_reached), "⏳")
-        } else {
-            showBlockedOverlay(getString(R.string.loading), "⏳")
+        override fun onPermissionRequest(request: PermissionRequest) {
+            runOnUiThread {
+                val resources = request.resources
+                if (resources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) {
+                    if (ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO)
+                        == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
+                    } else {
+                        pendingAudioPermissionRequest = request
+                        requestAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                } else {
+                    request.deny()
+                }
+            }
         }
     }
 
@@ -815,27 +755,27 @@ class MainActivity : AppCompatActivity() {
                     document.head.appendChild(meta);
                 }
                 meta.content = '#0D0D1A';
-                
+
                 if (window.location.hostname.includes('marmiton.org')) {
                     // Supprimer par prévention tous les target="_blank" des liens pour qu'ils s'ouvrent dans la vue actuelle
                     setInterval(function() {
                         document.querySelectorAll('a[target="_blank"]').forEach(function(a) {
                             a.removeAttribute('target');
                         });
-                        
+
                         // Accepter automatiquement les cookies didomi
                         var acceptBtn = document.querySelector('#didomi-notice-agree-button');
                         if (acceptBtn) {
                             acceptBtn.click();
                         }
-                        
+
                         // Fermer la bannière intelligente d'application
                         var appBannerClose = document.querySelector('.af-smart-banner-closeBtn');
                         if (appBannerClose) {
                             appBannerClose.click();
                         }
                     }, 1000);
-                    
+
                     var style = document.createElement('style');
                     style.innerHTML = `
                         .af-smart-banner { display: none !important; }
@@ -870,29 +810,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        checkAndResetDailyTimer()
         webView.onResume()
-        if (isCurrentUrlDiscord(currentMainUrl)) {
-            startTimer()
-        }
     }
 
     override fun onPause() {
         super.onPause()
         webView.onPause()
-        stopTimer()
-        
-        // Si l'utilisateur quitte l'application pendant qu'une session est en cours, 
-        // on la termine immédiatement pour déclencher le temps d'attente (cooldown).
-        if (checkDiscordAccess() == DiscordAccessState.ALLOWED) {
-            val forcedExpirationTime = System.currentTimeMillis() - DISCORD_SESSION_LIMIT_MS
-            prefs.edit().putLong(PREF_DISCORD_SESSION_START_MS, forcedExpirationTime).apply()
-        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        stopTimer()
         try {
             unregisterReceiver(downloadReceiver)
         } catch (_: Exception) { }

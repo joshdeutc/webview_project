@@ -1,0 +1,22 @@
+*.iml
+.gradle
+.kotlin
+/local.properties
+/.idea/
+.DS_Store
+Thumbs.db
+
+# Build outputs
+build/
+*/build/
+**/build/
+**/.gradle/
+**/.kotlin/
+**/.idea/
+
+# Android generated
+captures/
+.externalNativeBuild
+.cxx
+*.apk
+output-metadata.json

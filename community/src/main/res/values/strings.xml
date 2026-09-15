@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Communauté</string>
+    <string name="loading">Chargement…</string>
+    <string name="no_internet">Pas de connexion Internet</string>
+    <string name="retry">Réessayer</string>
+    <string name="go_home">Retour</string>
+    <string name="close_app">Fermer l\'application</string>
+    <string name="nav_fetlife">FetLife</string>
+    <string name="nav_sutra">BDSMsutra</string>
+    <string name="external_url_not_allowed">🚫 Le domaine \"%1$s\" n\'est pas dans votre liste autorisée.</string>
+    <string name="daily_limit_reached">⏳ Temps journalier épuisé.\nVous avez utilisé vos 5 sessions (15 minutes) pour aujourd\'hui.</string>
+    <string name="session_limit_reached">⏳ Session terminée.\nRevenez dans %s pour une nouvelle session de 3 minutes.</string>
+    <string name="session_ready">✅ Votre session est prête ! Relancez l\'application.</string>
+    <string name="time_remaining">Session : %1$s | Restantes : %2$d</string>
+</resources>

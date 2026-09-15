@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">monlycee.net</domain>
+        <domain includeSubdomains="true">iledefrance.fr</domain>
+        <domain includeSubdomains="true">education.gouv.fr</domain>
+        <domain includeSubdomains="true">education.fr</domain>
+    </domain-config>
+</network-security-config>

@@ -1,0 +1,17 @@
+<resources>
+    <color name="primary">#FF6200EE</color>
+    <color name="primary_dark">#FF3700B3</color>
+    <color name="accent">#FF03DAC5</color>
+    <color name="background_dark">#FF0D0D1A</color>
+    <color name="surface_dark">#FF1A1A2E</color>
+    <color name="card_dark">#FF16213E</color>
+    <color name="gradient_start">#FF6C63FF</color>
+    <color name="gradient_mid">#FF9B59B6</color>
+    <color name="gradient_end">#FFEE5A24</color>
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
+    <color name="blocked_overlay">#E6000000</color>
+    <color name="progress_track">#33FFFFFF</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+</resources>

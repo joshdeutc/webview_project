@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background_dark">
@@ -24,24 +25,6 @@
         app:tint="@color/white"
         app:backgroundTint="@color/primary"
         app:fabSize="mini" />
-
-    <!-- Timer Indicator (Visible only on Discord) -->
-    <TextView
-        android:id="@+id/timerIndicator"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="32dp"
-        android:background="@drawable/progress_gradient"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="8dp"
-        android:text="20:00"
-        android:textColor="@color/white"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:visibility="gone"
-        android:elevation="4dp" />
 
     <!-- Custom progress bar at the top -->
     <FrameLayout
@@ -85,15 +68,6 @@
                 android:textColor="@color/white" />
 
             <Button
-                android:id="@+id/btnNavDiscord"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="2dp"
-                android:text="@string/nav_discord"
-                android:textColor="@color/white" />
-
-            <Button
                 android:id="@+id/btnNavBerserk"
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"
@@ -127,6 +101,15 @@
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="2dp"
                 android:text="@string/nav_marmiton"
+                android:textColor="@color/white" />
+
+            <Button
+                android:id="@+id/btnNavInstagram"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="2dp"
+                android:text="@string/nav_instagram"
                 android:textColor="@color/white" />
 
         </LinearLayout>

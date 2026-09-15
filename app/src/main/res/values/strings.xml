@@ -9,14 +9,10 @@
     <string name="download_failed">Échec du téléchargement</string>
     <string name="video_download_blocked">Le téléchargement de vidéos n\'est pas autorisé.</string>
     <string name="nav_notube">NoTube</string>
-    <string name="nav_discord">Discord</string>
     <string name="nav_berserk">Berserk</string>
     <string name="nav_doctolib">Doctolib</string>
     <string name="nav_sncf">SNCF</string>
     <string name="nav_marmiton">Marmiton</string>
-    <string name="discord_daily_limit_reached">⏳ Temps journalier épuisé.\nVous avez utilisé vos 3 sessions (15 minutes) pour aujourd\'hui.</string>
-    <string name="discord_session_limit_reached">⏳ Session terminée.\nRevenez dans %s pour une nouvelle session de 5 minutes.</string>
-    <string name="discord_ready">✅ Votre session est prête ! Cliquez sur Retour puis sur l\'icône Discord.</string>
-    <string name="time_remaining">Session : %1$s | Restantes : %2$d</string>
+    <string name="nav_instagram">Instagram</string>
     <string name="external_url_not_allowed">🚫 Le domaine \"%1$s\" n\'est pas dans votre liste autorisée.</string>
 </resources>

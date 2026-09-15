@@ -21,3 +21,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "NoTubePlayer"
 include(":app")
+include(":discord_personal")
+include(":tapology")
+include(":lycee")
+include(":community")
