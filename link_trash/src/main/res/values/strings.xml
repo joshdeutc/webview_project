@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Link Trash</string>
+    <string name="loading">Chargement…</string>
+    <string name="no_internet">Pas de connexion Internet</string>
+    <string name="retry">Réessayer</string>
+    <string name="close_app">Fermer</string>
+    <string name="waiting_link_title">En attente d\'un lien</string>
+    <string name="waiting_link_desc">Cliquez sur un lien dans une autre application pour l\'ouvrir ici.</string>
+</resources>
