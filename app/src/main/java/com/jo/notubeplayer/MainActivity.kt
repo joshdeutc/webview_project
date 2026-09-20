@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         // Imposé par l'URL d'entrée plutôt qu'en JS : une redirection répétée en boucle
         // risquerait de se battre avec le routeur d'Instagram et de figer la page.
         private const val INSTAGRAM_FEED_URL = "https://www.instagram.com/?variant=following"
-        private const val ANTIGRAVITY_URL = "https://antigravity.google/"
+        private const val ANTIGRAVITY_URL = "https://accounts.google.com/AccountChooser?Email=joshuanancey%40gmail.com&continue=https%3A%2F%2Fantigravity.google.com%2Fr%2F8fdefe5a-83a4-439f-9225-a025f4dcdee9-v2"
         private const val NOTIFICATION_PERMISSION_CODE = 1001
 
         // Logging tags — filter with: adb logcat -s NTP_NAV,NTP_BLOCK,NTP_INTENT,NTP_AD
