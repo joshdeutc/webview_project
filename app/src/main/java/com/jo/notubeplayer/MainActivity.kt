@@ -321,6 +321,11 @@ class MainActivity : AppCompatActivity() {
             userAgentString = currentAgent.replace("; wv", "")
         }
 
+        CookieManager.getInstance().apply {
+            setAcceptCookie(true)
+            setAcceptThirdPartyCookies(webView, true)
+        }
+
         webView.webViewClient = NoTubeWebViewClient()
         webView.webChromeClient = NoTubeChromeClient()
 
@@ -512,6 +517,7 @@ class MainActivity : AppCompatActivity() {
             hideProgress()
             hideSplash()
             injectDarkModeEnhancements(view)
+            CookieManager.getInstance().flush()
         }
 
         override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
