@@ -50,6 +50,7 @@ class MainActivity : AppCompatActivity() {
         // Imposé par l'URL d'entrée plutôt qu'en JS : une redirection répétée en boucle
         // risquerait de se battre avec le routeur d'Instagram et de figer la page.
         private const val INSTAGRAM_FEED_URL = "https://www.instagram.com/?variant=following"
+        private const val ANTIGRAVITY_URL = "https://antigravity.google/"
         private const val NOTIFICATION_PERMISSION_CODE = 1001
 
         // Logging tags — filter with: adb logcat -s NTP_NAV,NTP_BLOCK,NTP_INTENT,NTP_AD
@@ -78,7 +79,12 @@ class MainActivity : AppCompatActivity() {
             "instagram.com",
             "cdninstagram.com",
             "fbcdn.net",
-            "facebook.com"
+            "facebook.com",
+            // Antigravity Remote Control + services d'authentification Google
+            "antigravity.google",
+            "gstatic.com",
+            "googleapis.com",
+            "googleusercontent.com"
         )
 
         // Matche "notube.<tld>" et "<sous-domaine>.notube.<tld>", quel que soit le TLD,
@@ -104,6 +110,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnNavSncf: Button
     private lateinit var btnNavMarmiton: Button
     private lateinit var btnNavInstagram: Button
+    private lateinit var btnNavAntigravity: Button
 
     private var webViewBasePaddingBottom: Int = 0
     private var progressAnimator: android.animation.ValueAnimator? = null
@@ -260,6 +267,7 @@ class MainActivity : AppCompatActivity() {
         btnNavSncf = findViewById(R.id.btnNavSncf)
         btnNavMarmiton = findViewById(R.id.btnNavMarmiton)
         btnNavInstagram = findViewById(R.id.btnNavInstagram)
+        btnNavAntigravity = findViewById(R.id.btnNavAntigravity)
 
         findViewById<View>(R.id.btnGoBack).setOnClickListener {
             blockedOverlay.visibility = View.GONE
@@ -283,6 +291,7 @@ class MainActivity : AppCompatActivity() {
         btnNavSncf.setOnClickListener { webView.loadUrl(SNCF_URL) }
         btnNavMarmiton.setOnClickListener { webView.loadUrl(MARMITON_URL) }
         btnNavInstagram.setOnClickListener { webView.loadUrl(INSTAGRAM_FEED_URL) }
+        btnNavAntigravity.setOnClickListener { webView.loadUrl(ANTIGRAVITY_URL) }
     }
 
     private fun loadNotube() {

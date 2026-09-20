@@ -14,5 +14,6 @@
     <string name="nav_sncf">SNCF</string>
     <string name="nav_marmiton">Marmiton</string>
     <string name="nav_instagram">Instagram</string>
+    <string name="nav_antigravity">Antigravity</string>
     <string name="external_url_not_allowed">🚫 Le domaine \"%1$s\" n\'est pas dans votre liste autorisée.</string>
 </resources>
