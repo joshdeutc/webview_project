@@ -83,7 +83,23 @@ class MainActivity : AppCompatActivity() {
             "cloudflareinsights.com",
             "gstatic.com",
             "googleapis.com",
-            "google.com"
+            "google.com",
+            "hcaptcha.com",
+            "recaptcha.net",
+            "arkoselabs.com",
+            "funcaptcha.com"
+        )
+
+        private val EMPTY_1X1_PNG = byteArrayOf(
+            0x89.toByte(), 0x50.toByte(), 0x4E.toByte(), 0x47.toByte(), 0x0D.toByte(), 0x0A.toByte(), 0x1A.toByte(), 0x0A.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x0D.toByte(), 0x49.toByte(), 0x48.toByte(), 0x44.toByte(), 0x52.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x01.toByte(), 0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x01.toByte(),
+            0x08.toByte(), 0x06.toByte(), 0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x1F.toByte(), 0x15.toByte(), 0xC4.toByte(),
+            0x89.toByte(), 0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x0A.toByte(), 0x49.toByte(), 0x44.toByte(), 0x54.toByte(),
+            0x78.toByte(), 0x9C.toByte(), 0x63.toByte(), 0x00.toByte(), 0x01.toByte(), 0x00.toByte(), 0x00.toByte(), 0x05.toByte(),
+            0x00.toByte(), 0x01.toByte(), 0x0D.toByte(), 0x0A.toByte(), 0x2D.toByte(), 0xB4.toByte(), 0x00.toByte(), 0x00.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x49.toByte(), 0x45.toByte(), 0x4E.toByte(), 0x44.toByte(), 0xAE.toByte(), 0x42.toByte(),
+            0x60.toByte(), 0x82.toByte()
         )
     }
 
@@ -439,6 +455,49 @@ class MainActivity : AppCompatActivity() {
         webView.webChromeClient = CommunityChromeClient()
     }
 
+    private fun isCaptchaDomain(host: String): Boolean {
+        return host.contains("hcaptcha") ||
+               host.contains("recaptcha") ||
+               host.contains("turnstile") ||
+               host.contains("arkoselabs") ||
+               host.contains("funcaptcha") ||
+               host.contains("geetest")
+    }
+
+    private fun isCaptchaRequest(url: String, request: WebResourceRequest): Boolean {
+        val lowerUrl = url.lowercase()
+        val host = try { Uri.parse(url).host?.lowercase() ?: "" } catch (_: Exception) { "" }
+        val path = try { Uri.parse(url).path?.lowercase() ?: "" } catch (_: Exception) { "" }
+
+        if (isCaptchaDomain(host)) return true
+
+        if (path.contains("captcha") ||
+            path.contains("recaptcha") ||
+            path.contains("hcaptcha") ||
+            path.contains("turnstile") ||
+            path.contains("challenge-platform") ||
+            lowerUrl.contains("captcha") ||
+            lowerUrl.contains("recaptcha")
+        ) {
+            return true
+        }
+
+        val referer = request.requestHeaders?.get("Referer")
+            ?: request.requestHeaders?.get("referer")
+            ?: ""
+        val lowerReferer = referer.lowercase()
+        if (lowerReferer.contains("recaptcha") ||
+            lowerReferer.contains("hcaptcha") ||
+            lowerReferer.contains("turnstile") ||
+            lowerReferer.contains("arkoselabs") ||
+            lowerReferer.contains("captcha")
+        ) {
+            return true
+        }
+
+        return false
+    }
+
     private fun isUrlAllowed(url: String): Boolean {
         return try {
             val uri = Uri.parse(url)
@@ -447,9 +506,12 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
             val host = uri.host?.lowercase() ?: return false
-            ALLOWED_DOMAINS.any { domain ->
+            if (ALLOWED_DOMAINS.any { domain ->
                 host == domain || host.endsWith(".$domain")
+            }) {
+                return true
             }
+            isCaptchaDomain(host)
         } catch (e: Exception) {
             false
         }
@@ -522,11 +584,16 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Coupe les médias sur FetLife uniquement. Aucun hôte n'est bloqué en
-            // entier : flcdn.net sert aussi des scripts et des feuilles de style.
+            // Exception essentielle : Toujours laisser passer les requêtes de Captcha (hCaptcha, Turnstile, reCAPTCHA...)
+            if (isCaptchaRequest(url, request)) {
+                return super.shouldInterceptRequest(view, request)
+            }
+
+            // Coupe les médias sur FetLife uniquement. Remplacé par un PNG transparent 1x1
+            // sans casser l'affichage ni déclencher d'erreurs.
             if (isCurrentUrlFetlife(currentMainUrl) && !isAudioRequest(request) && isMediaResource(url)) {
                 android.util.Log.d(TAG_AD, "BLOCKED media (FetLife): $url")
-                return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream("".toByteArray()))
+                return WebResourceResponse("image/png", "UTF-8", ByteArrayInputStream(EMPTY_1X1_PNG))
             }
 
             return super.shouldInterceptRequest(view, request)
@@ -554,9 +621,9 @@ class MainActivity : AppCompatActivity() {
             showProgress()
             errorOverlay.visibility = View.GONE
 
-            // Le réglage suit la page courante : passer de FetLife à BDSMsutra
-            // rallume les images, et l'inverse les éteint.
-            webView.settings.blockNetworkImage = isCurrentUrlFetlife(url)
+            // On maintient blockNetworkImage à false pour que shouldInterceptRequest
+            // puisse autoriser sélectivement les Captchas tout en filtrant les photos.
+            webView.settings.blockNetworkImage = false
 
             // La machine à états ne concerne que les vraies pages de contenu.
             if (!isContentUrl(url)) return
