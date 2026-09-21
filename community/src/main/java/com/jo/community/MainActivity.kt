@@ -170,10 +170,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var isSelectingFile = false
+    private var isRequestingPermission = false
+
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        isSelectingFile = false
         if (result.resultCode == RESULT_OK) {
             val intentData = result.data
             val clipData = intentData?.clipData
@@ -197,6 +201,7 @@ class MainActivity : AppCompatActivity() {
     private val requestAudioLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
+        isRequestingPermission = false
         if (isGranted) {
             pendingAudioPermissionRequest?.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
         } else {
@@ -719,9 +724,11 @@ class MainActivity : AppCompatActivity() {
             }
 
             return try {
+                isSelectingFile = true
                 fileChooserLauncher.launch(intent)
                 true
             } catch (e: Exception) {
+                isSelectingFile = false
                 android.util.Log.e(TAG_NAV, "Erreur ouverture sélecteur de fichier", e)
                 fileUploadCallback?.onReceiveValue(null)
                 fileUploadCallback = null
@@ -739,6 +746,7 @@ class MainActivity : AppCompatActivity() {
                         request.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE))
                     } else {
                         pendingAudioPermissionRequest = request
+                        isRequestingPermission = true
                         requestAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     }
                 } else {
@@ -782,8 +790,8 @@ class MainActivity : AppCompatActivity() {
                 params.width = animator.animatedValue as Int
                 progressBar.layoutParams = params
             }
-            start()
         }
+        progressAnimator?.start()
     }
 
     // ─── Overlays ────────────────────────────────────────────────────────
@@ -882,6 +890,14 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         webView.onPause()
         stopTimer()
+
+        // Si l'application passe temporairement en arrière-plan car l'utilisateur
+        // a ouvert le sélecteur de fichier / photo ou la boîte de dialogue système,
+        // on ne doit SURTOUT PAS forcer la fin de session !
+        if (isSelectingFile || isRequestingPermission) {
+            android.util.Log.i(TAG_SESSION, "onPause ignoré (sélecteur externe actif)")
+            return
+        }
 
         // Quitter l'app pendant une session la termine immédiatement et déclenche
         // le cooldown — sinon il suffirait de faire des allers-retours.
