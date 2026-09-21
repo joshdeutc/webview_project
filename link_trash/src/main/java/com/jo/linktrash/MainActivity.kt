@@ -256,7 +256,7 @@ class MainActivity : AppCompatActivity() {
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
-            mediaPlaybackRequiresUserGesture = false
+            mediaPlaybackRequiresUserGesture = true
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         }
@@ -341,6 +341,33 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 hideProgress()
+
+                // Neutralisation dynamique complète des balises vidéo et audio côté DOM
+                view.evaluateJavascript(
+                    """
+                    (function() {
+                        try {
+                            var style = document.createElement('style');
+                            style.textContent = 'video, audio, object[type*="video"], embed[type*="video"] { display: none !important; visibility: hidden !important; width: 0 !important; height: 0 !important; pointer-events: none !important; }';
+                            (document.head || document.documentElement).appendChild(style);
+                            function neutralize() {
+                                document.querySelectorAll('video, audio').forEach(function(v) {
+                                    try {
+                                        v.pause();
+                                        v.removeAttribute('src');
+                                        v.src = '';
+                                        v.load();
+                                    } catch(e) {}
+                                });
+                            }
+                            neutralize();
+                            var observer = new MutationObserver(neutralize);
+                            observer.observe(document.documentElement, { childList: true, subtree: true });
+                        } catch(e) {}
+                    })();
+                    """.trimIndent(),
+                    null
+                )
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -590,12 +617,16 @@ class MainActivity : AppCompatActivity() {
         val secFetchDest = (headers["Sec-Fetch-Dest"] ?: headers["sec-fetch-dest"] ?: "").lowercase()
         if (secFetchDest == "video" || secFetchDest == "audio") return true
 
+        val accept = (headers["Accept"] ?: headers["accept"] ?: "").lowercase()
+        if (accept.contains("video/") || accept.contains("audio/")) return true
+
         val path = try { Uri.parse(url).path?.lowercase() ?: "" } catch (_: Exception) { "" }
+        val lowerUrl = url.lowercase()
         val mediaExtensions = listOf(
-            ".mp4", ".webm", ".mov", ".m4v", ".m3u8", ".ts",
-            ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac"
+            ".mp4", ".webm", ".mov", ".m4v", ".m3u8", ".ts", ".flv", ".avi", ".mkv", ".ogv",
+            ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac", ".opus"
         )
-        return mediaExtensions.any { path.endsWith(it) }
+        return mediaExtensions.any { path.endsWith(it) || lowerUrl.contains(it) }
     }
 
     private fun showBlockedOverlay(reason: String) {
