@@ -25,8 +25,121 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import java.io.ByteArrayInputStream
 
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private val BLOCKED_HOSTS = setOf(
+            // Plateformes de créateurs & financement
+            "patreon.com",
+            "throne.com",
+            "throne.me",
+            "fansly.com",
+            "onlyfans.com",
+            "loyalfans.com",
+            "subscribestar.com",
+            "subscribestar.adult",
+            "ko-fi.com",
+            "buymeacoffee.com",
+            "fanvue.com",
+            "manyvids.com",
+            "clips4sale.com",
+            "iwantclips.com",
+            "mym.fans",
+            "candr.link",
+            "allmylinks.com",
+
+            // Réseaux sociaux & plateformes de flux/vidéo
+            "x.com",
+            "twitter.com",
+            "t.co",
+            "tumblr.com",
+            "bsky.app",
+            "bsky.social",
+            "reddit.com",
+            "redd.it",
+            "tiktok.com",
+            "instagram.com",
+            "threads.net",
+            "facebook.com",
+            "fb.com",
+            "pinterest.com",
+            "youtube.com",
+            "youtu.be",
+            "vimeo.com",
+            "dailymotion.com",
+            "twitch.tv",
+            "kick.com",
+            "4chan.org",
+
+            // Sites adultes / hypnose
+            "hypnoporn.net",
+            "hypnohub.net",
+            "hypno.tube",
+            "hypno-fetish.com",
+            "hypnotube.com",
+            "pornhub.com",
+            "xvideos.com",
+            "xnxx.com",
+            "redtube.com",
+            "youporn.com",
+            "spankbang.com",
+            "xhamster.com",
+            "erome.com",
+            "chaturbate.com",
+            "camsoda.com",
+            "stripchat.com",
+            "rule34.xxx",
+            "e621.net",
+            "literotica.com",
+            "archiveofourown.org",
+            "ao3.org",
+
+            // Moteurs de recherche généraux
+            "duckduckgo.com",
+            "ecosia.org",
+            "qwant.com"
+        )
+
+        private val BLOCKED_KEYWORDS = listOf(
+            "hypno",
+            "hypnosis",
+            "hypnotic",
+            "trance",
+            "mindbreak",
+            "mindcontrol",
+            "brainwash",
+            "bimbo",
+            "bimbofication",
+            "fetish",
+            "kink",
+            "erotic",
+            "erotica",
+            "hentai",
+            "camgirl",
+            "nsfw",
+            "onlyfans",
+            "fansly",
+            "patreon",
+            "throne",
+            "subscribestar",
+            "loyalfans"
+        )
+
+        // 1x1 transparent PNG bytes pour remplacer les images bloquées sans casser la page
+        private val EMPTY_1X1_PNG = byteArrayOf(
+            0x89.toByte(), 0x50.toByte(), 0x4E.toByte(), 0x47.toByte(), 0x0D.toByte(), 0x0A.toByte(), 0x1A.toByte(), 0x0A.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x0D.toByte(), 0x49.toByte(), 0x48.toByte(), 0x44.toByte(), 0x52.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x01.toByte(), 0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x01.toByte(),
+            0x08.toByte(), 0x06.toByte(), 0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x1F.toByte(), 0x15.toByte(), 0xC4.toByte(),
+            0x89.toByte(), 0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x0A.toByte(), 0x49.toByte(), 0x44.toByte(), 0x41.toByte(),
+            0x54.toByte(), 0x78.toByte(), 0x9C.toByte(), 0x63.toByte(), 0x00.toByte(), 0x01.toByte(), 0x00.toByte(), 0x00.toByte(),
+            0x05.toByte(), 0x00.toByte(), 0x01.toByte(), 0x0D.toByte(), 0x0A.toByte(), 0x2D.toByte(), 0xB4.toByte(), 0x00.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x49.toByte(), 0x45.toByte(), 0x4E.toByte(), 0x44.toByte(), 0xAE.toByte(),
+            0x42.toByte(), 0x60.toByte(), 0x82.toByte()
+        )
+    }
 
     private lateinit var rootLayout: LinearLayout
     private lateinit var topBar: LinearLayout
@@ -39,6 +152,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var emptyState: LinearLayout
     private lateinit var errorOverlay: FrameLayout
+    private lateinit var blockedOverlay: FrameLayout
+    private lateinit var txtBlockedTitle: TextView
+    private lateinit var txtBlockedDesc: TextView
+    private lateinit var btnBlockedClose: View
 
     private var currentUrl: String = ""
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
@@ -106,6 +223,10 @@ class MainActivity : AppCompatActivity() {
         webView = findViewById(R.id.webView)
         emptyState = findViewById(R.id.emptyState)
         errorOverlay = findViewById(R.id.errorOverlay)
+        blockedOverlay = findViewById(R.id.blockedOverlay)
+        txtBlockedTitle = findViewById(R.id.txtBlockedTitle)
+        txtBlockedDesc = findViewById(R.id.txtBlockedDesc)
+        btnBlockedClose = findViewById(R.id.btnBlockedClose)
     }
 
     private fun setupInsets() {
@@ -155,6 +276,12 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                val (isBlocked, reason) = isUrlBlocked(url)
+                if (isBlocked) {
+                    showBlockedOverlay(reason)
+                    return true
+                }
+
                 if (request.isForMainFrame) {
                     currentUrl = url
                     txtHost.text = request.url.host ?: url
@@ -162,8 +289,43 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
 
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                val url = request.url.toString()
+
+                // 1. Sous-requête vers un domaine ou mot-clé interdit
+                val (isBlocked, _) = isUrlBlocked(url)
+                if (isBlocked) {
+                    return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+                }
+
+                // 2. Exception Captcha : Laisser passer les captchas et contrôles de sécurité
+                if (isCaptchaRequest(url, request)) {
+                    return super.shouldInterceptRequest(view, request)
+                }
+
+                // 3. Bloquer toutes les images (remplacer par un PNG transparent 1x1 sans casser la mise en page)
+                if (isImageResource(url, request)) {
+                    return WebResourceResponse("image/png", "UTF-8", ByteArrayInputStream(EMPTY_1X1_PNG))
+                }
+
+                // 4. Bloquer les médias audio et vidéo
+                if (isMediaResource(url, request)) {
+                    return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+                }
+
+                return super.shouldInterceptRequest(view, request)
+            }
+
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
+                val (isBlocked, reason) = isUrlBlocked(url)
+                if (isBlocked) {
+                    view.stopLoading()
+                    showBlockedOverlay(reason)
+                    return
+                }
+
+                hideBlockedOverlay()
                 currentUrl = url
                 try {
                     val host = Uri.parse(url).host
@@ -278,6 +440,10 @@ class MainActivity : AppCompatActivity() {
             finish()
         }
 
+        btnBlockedClose.setOnClickListener {
+            finish()
+        }
+
         findViewById<View>(R.id.btnRetry).setOnClickListener {
             if (currentUrl.isNotEmpty()) {
                 errorOverlay.visibility = View.GONE
@@ -290,6 +456,15 @@ class MainActivity : AppCompatActivity() {
         val uri = intent?.data
         if (uri != null && (uri.scheme == "http" || uri.scheme == "https")) {
             val targetUrl = uri.toString()
+            val (isBlocked, reason) = isUrlBlocked(targetUrl)
+            if (isBlocked) {
+                currentUrl = targetUrl
+                txtHost.text = uri.host ?: targetUrl
+                showBlockedOverlay(reason)
+                return
+            }
+
+            hideBlockedOverlay()
             currentUrl = targetUrl
             emptyState.visibility = View.GONE
             webView.visibility = View.VISIBLE
@@ -297,11 +472,142 @@ class MainActivity : AppCompatActivity() {
             webView.loadUrl(targetUrl)
         } else {
             if (currentUrl.isEmpty()) {
+                hideBlockedOverlay()
                 emptyState.visibility = View.VISIBLE
                 webView.visibility = View.GONE
                 txtHost.text = getString(R.string.app_name)
             }
         }
+    }
+
+    private fun isUrlBlocked(url: String): Pair<Boolean, String> {
+        val uri = try { Uri.parse(url) } catch (_: Exception) { return Pair(false, "") }
+        val scheme = uri.scheme?.lowercase() ?: ""
+        if (scheme != "http" && scheme != "https") {
+            return Pair(false, "")
+        }
+        val host = uri.host?.lowercase() ?: ""
+        val path = uri.path?.lowercase() ?: ""
+        val query = uri.query?.lowercase() ?: ""
+
+        // Exception vitale : comptes Google et connexion
+        if (host == "accounts.google.com" || host == "myaccount.google.com") {
+            return Pair(false, "")
+        }
+
+        // 1. Moteurs de recherche (requêtes de recherche)
+        if ((host.endsWith("google.com") || host.endsWith("google.fr")) && path.startsWith("/search")) {
+            return Pair(true, "Moteur de recherche non autorisé")
+        }
+        if (host.endsWith("bing.com") && path.startsWith("/search")) {
+            return Pair(true, "Moteur de recherche non autorisé")
+        }
+        if (host.endsWith("yahoo.com") && path.startsWith("/search")) {
+            return Pair(true, "Moteur de recherche non autorisé")
+        }
+
+        // 2. Vérification des domaines bloqués
+        for (blocked in BLOCKED_HOSTS) {
+            if (host == blocked || host.endsWith(".$blocked")) {
+                return Pair(true, "Site bloqué : $blocked")
+            }
+        }
+
+        // 3. Vérification des mots-clés dans le chemin ou la requête
+        val pathAndQuery = "$path?$query"
+        for (kw in BLOCKED_KEYWORDS) {
+            if (pathAndQuery.contains(kw)) {
+                return Pair(true, "Contenu bloqué (mot-clé '$kw')")
+            }
+        }
+
+        return Pair(false, "")
+    }
+
+    private fun isCaptchaRequest(url: String, request: WebResourceRequest): Boolean {
+        val lowerUrl = url.lowercase()
+        val host = try { Uri.parse(url).host?.lowercase() ?: "" } catch (_: Exception) { "" }
+        val path = try { Uri.parse(url).path?.lowercase() ?: "" } catch (_: Exception) { "" }
+
+        // 1. Domaines dédiés aux captchas et défis de sécurité
+        if (host.contains("recaptcha") ||
+            host.contains("hcaptcha") ||
+            host.contains("arkoselabs") ||
+            host.contains("funcaptcha") ||
+            host.contains("geetest") ||
+            host.contains("turnstile") ||
+            (host.endsWith("cloudflare.com") && (path.contains("turnstile") || path.contains("challenge"))) ||
+            ((host.endsWith("google.com") || host.endsWith("gstatic.com")) && path.contains("recaptcha"))
+        ) {
+            return true
+        }
+
+        // 2. Mots-clés Captcha dans le chemin ou l'URL
+        if (path.contains("captcha") ||
+            path.contains("recaptcha") ||
+            path.contains("hcaptcha") ||
+            path.contains("turnstile") ||
+            path.contains("challenge-platform") ||
+            lowerUrl.contains("captcha") ||
+            lowerUrl.contains("recaptcha")
+        ) {
+            return true
+        }
+
+        // 3. Header Referer
+        val referer = request.requestHeaders?.get("Referer")
+            ?: request.requestHeaders?.get("referer")
+            ?: ""
+        val lowerReferer = referer.lowercase()
+        if (lowerReferer.contains("recaptcha") ||
+            lowerReferer.contains("hcaptcha") ||
+            lowerReferer.contains("turnstile") ||
+            lowerReferer.contains("arkoselabs") ||
+            lowerReferer.contains("captcha")
+        ) {
+            return true
+        }
+
+        return false
+    }
+
+    private fun isImageResource(url: String, request: WebResourceRequest): Boolean {
+        val headers = request.requestHeaders ?: emptyMap()
+        val secFetchDest = (headers["Sec-Fetch-Dest"] ?: headers["sec-fetch-dest"] ?: "").lowercase()
+        if (secFetchDest == "image") return true
+
+        val path = try { Uri.parse(url).path?.lowercase() ?: "" } catch (_: Exception) { "" }
+        val imageExtensions = listOf(
+            ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".avif", ".tif", ".tiff"
+        )
+        return imageExtensions.any { path.endsWith(it) }
+    }
+
+    private fun isMediaResource(url: String, request: WebResourceRequest): Boolean {
+        if (isImageResource(url, request)) return true
+
+        val headers = request.requestHeaders ?: emptyMap()
+        val secFetchDest = (headers["Sec-Fetch-Dest"] ?: headers["sec-fetch-dest"] ?: "").lowercase()
+        if (secFetchDest == "video" || secFetchDest == "audio") return true
+
+        val path = try { Uri.parse(url).path?.lowercase() ?: "" } catch (_: Exception) { "" }
+        val mediaExtensions = listOf(
+            ".mp4", ".webm", ".mov", ".m4v", ".m3u8", ".ts",
+            ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac"
+        )
+        return mediaExtensions.any { path.endsWith(it) }
+    }
+
+    private fun showBlockedOverlay(reason: String) {
+        txtBlockedDesc.text = reason.ifEmpty { getString(R.string.blocked_site_desc) }
+        blockedOverlay.visibility = View.VISIBLE
+        webView.visibility = View.GONE
+        emptyState.visibility = View.GONE
+        hideProgress()
+    }
+
+    private fun hideBlockedOverlay() {
+        blockedOverlay.visibility = View.GONE
     }
 
     private fun showProgress() {
@@ -333,6 +639,9 @@ class MainActivity : AppCompatActivity() {
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         when {
+            blockedOverlay.visibility == View.VISIBLE -> {
+                finish()
+            }
             errorOverlay.visibility == View.VISIBLE -> {
                 errorOverlay.visibility = View.GONE
                 if (currentUrl.isNotEmpty()) {

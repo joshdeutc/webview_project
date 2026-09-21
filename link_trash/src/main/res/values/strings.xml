@@ -6,4 +6,6 @@
     <string name="close_app">Fermer</string>
     <string name="waiting_link_title">En attente d\'un lien</string>
     <string name="waiting_link_desc">Cliquez sur un lien dans une autre application pour l\'ouvrir ici.</string>
+    <string name="blocked_site_title">Accès bloqué</string>
+    <string name="blocked_site_desc">Ce site ou ce contenu fait partie de votre liste de protection.</string>
 </resources>
