@@ -36,6 +36,26 @@
             </intent-filter>
         </activity>
 
+        <service
+            android:name=".LinkTrashCustomTabsService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.support.customtabs.action.CustomTabsService" />
+            </intent-filter>
+        </service>
+
     </application>
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="com.fabernovel.idfsubventionjeunes" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="labaz" />
+        </intent>
+    </queries>
+
 
 </manifest>

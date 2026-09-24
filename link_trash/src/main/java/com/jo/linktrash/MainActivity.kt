@@ -256,9 +256,19 @@ class MainActivity : AppCompatActivity() {
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
-            mediaPlaybackRequiresUserGesture = true
+            mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            setSupportMultipleWindows(true)
+            javaScriptCanOpenWindowsAutomatically = true
+
+            val currentAgent = userAgentString ?: ""
+            userAgentString = currentAgent.replace("; wv", "")
+        }
+
+        CookieManager.getInstance().apply {
+            setAcceptCookie(true)
+            setAcceptThirdPartyCookies(webView, true)
         }
 
         webView.webViewClient = object : WebViewClient() {
@@ -268,11 +278,29 @@ class MainActivity : AppCompatActivity() {
 
                 if (scheme != "http" && scheme != "https") {
                     return try {
-                        val parsedIntent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
+                        val parsedIntent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME).apply {
+                            addCategory(Intent.CATEGORY_BROWSABLE)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
                         startActivity(parsedIntent)
+                        if (scheme == "com.fabernovel.idfsubventionjeunes" || scheme == "labaz") {
+                            finish()
+                        }
                         true
                     } catch (_: Exception) {
-                        true
+                        try {
+                            val fallbackIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                                addCategory(Intent.CATEGORY_BROWSABLE)
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            startActivity(fallbackIntent)
+                            if (scheme == "com.fabernovel.idfsubventionjeunes" || scheme == "labaz") {
+                                finish()
+                            }
+                            true
+                        } catch (_: Exception) {
+                            true
+                        }
                     }
                 }
 
@@ -391,6 +419,26 @@ class MainActivity : AppCompatActivity() {
                 if (!title.isNullOrEmpty() && txtHost.text.isNullOrEmpty()) {
                     txtHost.text = title
                 }
+            }
+
+            override fun onCreateWindow(
+                view: WebView?,
+                isDialog: Boolean,
+                isUserGesture: Boolean,
+                resultMsg: android.os.Message?
+            ): Boolean {
+                val newWebView = WebView(this@MainActivity)
+                newWebView.webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                        val target = request.url.toString()
+                        this@MainActivity.webView.loadUrl(target)
+                        return true
+                    }
+                }
+                val transport = resultMsg?.obj as? WebView.WebViewTransport
+                transport?.webView = newWebView
+                resultMsg?.sendToTarget()
+                return true
             }
 
             override fun onShowFileChooser(
@@ -517,8 +565,11 @@ class MainActivity : AppCompatActivity() {
         val path = uri.path?.lowercase() ?: ""
         val query = uri.query?.lowercase() ?: ""
 
-        // Exception vitale : comptes Google et connexion
-        if (host == "accounts.google.com" || host == "myaccount.google.com") {
+        // Exception vitale : comptes Google, FranceConnect et connexion Labaz / IdP
+        if (host == "accounts.google.com" || host == "myaccount.google.com" ||
+            host == "franceconnect.gouv.fr" || host.endsWith(".franceconnect.gouv.fr") ||
+            host == "iledefrance.fr" || host.endsWith(".iledefrance.fr")
+        ) {
             return Pair(false, "")
         }
 
