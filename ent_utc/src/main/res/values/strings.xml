@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">ENT UTC</string>
+    <string name="loading">Chargement de l\'ENT…</string>
+    <string name="no_internet">Pas de connexion Internet</string>
+    <string name="retry">Réessayer</string>
+    <string name="go_home">Retour à l\'ENT</string>
+    <string name="download_started">Téléchargement démarré…</string>
+    <string name="download_complete">Téléchargement terminé</string>
+    <string name="external_url_not_allowed">🚫 Le domaine \"%1$s\" n\'est pas dans votre liste autorisée.</string>
+</resources>

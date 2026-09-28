@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">utc.fr</domain>
+        <domain includeSubdomains="true">renater.fr</domain>
+        <domain includeSubdomains="true">edugain.org</domain>
+        <domain includeSubdomains="true">education.gouv.fr</domain>
+        <domain includeSubdomains="true">education.fr</domain>
+        <domain includeSubdomains="true">cloudflare.com</domain>
+        <domain includeSubdomains="true">google.com</domain>
+        <domain includeSubdomains="true">gstatic.com</domain>
+    </domain-config>
+</network-security-config>
