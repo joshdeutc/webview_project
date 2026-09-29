@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:allowBackup="true"
@@ -13,32 +14,31 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Tapology"
-        android:usesCleartextTraffic="false"
+        android:usesCleartextTraffic="true"
+        android:hardwareAccelerated="true"
         android:networkSecurityConfig="@xml/network_security_config">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout"
             android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- LIEN #5 : les liens tapology.com ouverts depuis une autre app
-                 (navigateur, messagerie) atterrissent ici plutot que dans Chrome.
-                 Volontairement restreint a ce seul hote : se declarer navigateur
-                 generique casserait les flux d'authentification d'autres apps. -->
+            <!-- Links to watchwrestling.ae open directly in the app -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="tapology.com" />
-                <data android:scheme="https" android:host="www.tapology.com" />
+                <data android:scheme="https" android:host="watchwrestling.ae" />
+                <data android:scheme="https" android:host="www.watchwrestling.ae" />
+                <data android:scheme="http" android:host="watchwrestling.ae" />
+                <data android:scheme="http" android:host="www.watchwrestling.ae" />
             </intent-filter>
         </activity>
-
     </application>
 
 </manifest>

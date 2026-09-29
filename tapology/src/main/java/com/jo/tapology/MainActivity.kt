@@ -3,6 +3,7 @@ package com.jo.tapology
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.ConnectivityManager
@@ -11,6 +12,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.webkit.*
 import android.widget.FrameLayout
@@ -25,40 +27,93 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.ByteArrayInputStream
+import java.net.URLDecoder
 
 /**
- * Tapology — base de données MMA : fiches combattants, palmarès, classements,
- * calendrier des événements et pronostics de la communauté.
+ * Watch Wrestling — Streaming de catch professionnel (WWE, AEW, PPV, etc.)
  *
- * App mono-site sans quota de temps : c'est un site de consultation, pas un
- * réseau social. Les images sont conservées (photos et affiches d'événements
- * font partie du contenu utile).
+ * App mono-site sans quota de temps, avec :
+ * - Filtrage agressif des publicités, popups et popunders
+ * - Décodage direct des liens de redirection vidéo (afiyukent.one/away.php)
+ * - Support plein écran pour les lecteurs vidéo intégrés avec rotation paysage
+ * - Maintien de l'écran allumé pendant la lecture vidéo
  */
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        // ── LIEN #1 : la destination ─────────────────────────────────────
-        // L'URL chargée au démarrage et sur laquelle retombe le bouton "accueil".
-        private const val TAPOLOGY_URL = "https://www.tapology.com/"
+        private const val WATCHWRESTLING_URL = "https://watchwrestling.ae/"
 
-        // Logging tags — filter with: adb logcat -s TAP_NAV,TAP_BLOCK,TAP_INTENT,TAP_AD
-        private const val TAG_NAV    = "TAP_NAV"
-        private const val TAG_BLOCK  = "TAP_BLOCK"
-        private const val TAG_INTENT = "TAP_INTENT"
-        private const val TAG_AD     = "TAP_AD"
+        private const val TAG_NAV    = "WW_NAV"
+        private const val TAG_BLOCK  = "WW_BLOCK"
+        private const val TAG_INTENT = "WW_INTENT"
+        private const val TAG_AD     = "WW_AD"
 
-        // ── LIEN #2 : l'allowlist ────────────────────────────────────────
-        // Décide ce que le WebView a le droit d'ouvrir. Un domaine absent d'ici
-        // est bloqué, même si la page courante contient un lien vers lui.
-        // Les hôtes autres que tapology.com servent les polices, le CDN et
-        // la protection anti-bot — sans eux la page s'affiche cassée.
+        /**
+         * Liste des domaines autorisés : Watch Wrestling et ses passerelles/hébergeurs vidéo.
+         */
         private val ALLOWED_DOMAINS = listOf(
-            "tapology.com",
+            // Watch Wrestling sites
+            "watchwrestling.ae",
+            "watchwrestling.in",
+            "watchwrestling.ai",
+            "watchwrestling.so",
+            "watchwrestling.to",
+
+            // Video Gateways
+            "afiyukent.one",
+
+            // Video Streaming Hosts
+            "fastvid.xyz",
+            "dailymotion.com",
+            "dmcdn.net",
+            "ok.ru",
+            "odnoklassniki.ru",
+            "vk.com",
+            "userapi.com",
+            "streamwish.to",
+            "streamwish.com",
+            "swishsrv.com",
+            "wishembed.pro",
+            "netu.tv",
+            "hqq.tv",
+            "hqq.to",
+            "waaw.to",
+            "dood.to",
+            "doodstream.com",
+            "dood.so",
+            "dood.ws",
+            "dood.watch",
+            "filemoon.sx",
+            "filemoon.to",
+            "filemoon.in",
+            "mixdrop.co",
+            "mixdrop.to",
+
+            // CDN & Essential Libraries
             "cloudflare.com",
             "cloudflareinsights.com",
+            "jquery.com",
+            "bootstrapcdn.com",
+            "jsdelivr.net",
+            "cdnjs.cloudflare.com",
             "gstatic.com",
             "googleapis.com",
             "google.com"
+        )
+
+        /**
+         * Mots-clés pour bloquer les scripts publicitaires et traceurs dans les requêtes réseau.
+         */
+        private val AD_KEYWORDS = listOf(
+            "googleads", "doubleclick.net", "adsystem", "adserver",
+            "popads", "popcash", "exoclick", "propellerads", "adsterra",
+            "onclickads", "scorecardresearch", "taboola", "outbrain",
+            "criteo", "amazon-adsystem", "adnxs", "bidswitch",
+            "serving-sys.com", "media.net", "yieldmo.com", "popunder",
+            "histats.com", "googlesyndication.com", "trafficjunky",
+            "juicyads", "adreactor", "monetag.com", "hilltopads",
+            "clickadu.com", "richpush.com", "admaven.com", "mgid.com",
+            "tsyndicate.com", "yllix.com", "bet365", "1xbet", "1win"
         )
     }
 
@@ -110,6 +165,10 @@ class MainActivity : AppCompatActivity() {
         pendingAudioPermissionRequest = null
     }
 
+    // Video Fullscreen State
+    private var customVideoView: View? = null
+    private var customVideoCallback: WebChromeClient.CustomViewCallback? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -139,11 +198,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Un lien tapology.com ouvert depuis une autre app arrive ici. On le repasse
-     * quand même par l'allowlist : le manifeste filtre l'hôte de départ, pas les
-     * redirections qui suivent.
-     */
     private fun handleViewIntent(intent: Intent?): Boolean {
         if (intent?.action != Intent.ACTION_VIEW) return false
         val uri = intent.data ?: return false
@@ -193,9 +247,6 @@ class MainActivity : AppCompatActivity() {
 
         fabRefresh.setOnClickListener { webView.reload() }
 
-        // ── LIEN #3 : le câblage bouton → URL ────────────────────────────
-        // C'est ici qu'un bouton devient une navigation. Dans NoTube Player,
-        // qui a plusieurs sites, il y a une ligne comme celle-ci par bouton.
         findViewById<View>(R.id.btnGoHome).setOnClickListener {
             blockedOverlay.visibility = View.GONE
             loadHome()
@@ -212,14 +263,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadHome() {
-        webView.loadUrl(TAPOLOGY_URL)
+        webView.loadUrl(WATCHWRESTLING_URL)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
+        val cookieManager = CookieManager.getInstance()
+        cookieManager.setAcceptCookie(true)
+        cookieManager.setAcceptThirdPartyCookies(webView, true)
+
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
+            databaseEnabled = true
             allowFileAccess = false
             allowContentAccess = false
             setSupportMultipleWindows(false)
@@ -229,7 +285,7 @@ class MainActivity : AppCompatActivity() {
             displayZoomControls = false
             loadWithOverviewMode = true
             useWideViewPort = true
-            mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             cacheMode = WebSettings.LOAD_DEFAULT
             mediaPlaybackRequiresUserGesture = false
 
@@ -237,8 +293,8 @@ class MainActivity : AppCompatActivity() {
             userAgentString = currentAgent.replace("; wv", "")
         }
 
-        webView.webViewClient = TapologyWebViewClient()
-        webView.webChromeClient = TapologyChromeClient()
+        webView.webViewClient = WatchWrestlingWebViewClient()
+        webView.webChromeClient = WatchWrestlingChromeClient()
     }
 
     private fun isUrlAllowed(url: String): Boolean {
@@ -249,9 +305,6 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
             val host = uri.host?.lowercase() ?: return false
-            // `host == domain` couvre "tapology.com", `endsWith(".$domain")` couvre
-            // "www.tapology.com". Le point est ce qui empêche "fauxtapology.com"
-            // de passer la garde.
             ALLOWED_DOMAINS.any { domain ->
                 host == domain || host.endsWith(".$domain")
             }
@@ -260,20 +313,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private inner class TapologyWebViewClient : WebViewClient() {
+    /**
+     * Décode les redirections de type afiyukent.one/away.php?to=<url>
+     * pour charger directement la page cible et contourner les pubs interstitielles.
+     */
+    private fun resolveDirectVideoUrl(url: String): String? {
+        if (!url.contains("away.php?to=")) return null
+        return try {
+            val uri = Uri.parse(url)
+            val targetParam = uri.getQueryParameter("to")
+            if (!targetParam.isNullOrBlank()) {
+                URLDecoder.decode(targetParam, "UTF-8")
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private inner class WatchWrestlingWebViewClient : WebViewClient() {
 
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
             val url = request.url.toString()
 
+            // Bloquer toutes les ressources publicitaires et traceurs identifiés
             if (!request.isForMainFrame) {
-                val adKeywords = listOf(
-                    "googleads", "doubleclick.net", "adsystem", "adserver",
-                    "popads", "popcash", "exoclick", "propellerads", "adsterra",
-                    "onclickads", "scorecardresearch", "taboola", "outbrain",
-                    "criteo", "amazon-adsystem", "adnxs", "bidswitch",
-                    "serving-sys.com", "media.net", "yieldmo.com", "popunder"
-                )
-                if (adKeywords.any { url.contains(it, ignoreCase = true) }) {
+                if (AD_KEYWORDS.any { url.contains(it, ignoreCase = true) }) {
                     android.util.Log.d(TAG_AD, "BLOCKED ad resource: $url")
                     return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream("".toByteArray()))
                 }
@@ -283,18 +347,29 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-            val url = request.url.toString()
+            val rawUrl = request.url.toString()
             val frameType = if (request.isForMainFrame) "MAIN" else "SUB"
-            return if (isUrlAllowed(url)) {
-                android.util.Log.i(TAG_NAV, "ALLOW [$frameType] $url")
+
+            // 1. Détection et contournement des redirections away.php
+            val directUrl = resolveDirectVideoUrl(rawUrl)
+            if (directUrl != null) {
+                android.util.Log.i(TAG_NAV, "BYPASS away.php -> direct url: $directUrl")
+                if (isUrlAllowed(directUrl)) {
+                    view.loadUrl(directUrl)
+                    return true
+                }
+            }
+
+            // 2. Vérification de l'allowlist
+            return if (isUrlAllowed(rawUrl)) {
+                android.util.Log.i(TAG_NAV, "ALLOW [$frameType] $rawUrl")
                 if (request.isForMainFrame) {
-                    currentMainUrl = url
+                    currentMainUrl = rawUrl
                 }
                 false
             } else {
-                // Bloqué silencieusement : afficher un écran rouge à chaque lien
-                // sortant serait pénible, et ça coupe surtout les pop-ups.
-                android.util.Log.w(TAG_BLOCK, "BLOCK [$frameType] $url  (from page: $currentMainUrl)")
+                // Silencieusement ignoré pour neutraliser les popups/popunders et liens malveillants
+                android.util.Log.w(TAG_BLOCK, "BLOCK [$frameType] $rawUrl (from page: $currentMainUrl)")
                 true
             }
         }
@@ -312,7 +387,7 @@ class MainActivity : AppCompatActivity() {
             android.util.Log.i(TAG_NAV, "PAGE_DONE $url")
             hideProgress()
             hideSplash()
-            injectThemeColor(view)
+            injectAntiAdScript(view)
         }
 
         override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -325,9 +400,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private inner class TapologyChromeClient : WebChromeClient() {
-        private var customView: View? = null
-        private var customViewCallback: CustomViewCallback? = null
+    private inner class WatchWrestlingChromeClient : WebChromeClient() {
 
         override fun onProgressChanged(view: WebView, newProgress: Int) {
             super.onProgressChanged(view, newProgress)
@@ -335,25 +408,48 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onShowCustomView(view: View, callback: CustomViewCallback) {
-            customView = view
-            customViewCallback = callback
+            if (customVideoView != null) {
+                onHideCustomView()
+                return
+            }
+
+            customVideoView = view
+            customVideoCallback = callback
+
+            // Plein écran immersif et orientation paysage pour le lecteur vidéo
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+            val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+            windowInsetsController.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+
             val decorView = window.decorView as FrameLayout
             decorView.addView(view, FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             ))
             webView.visibility = View.GONE
+            fabRefresh.visibility = View.GONE
         }
 
         override fun onHideCustomView() {
-            customView?.let {
+            customVideoView?.let { view ->
                 val decorView = window.decorView as FrameLayout
-                decorView.removeView(it)
+                decorView.removeView(view)
                 webView.visibility = View.VISIBLE
-                customViewCallback?.onCustomViewHidden()
+                fabRefresh.visibility = View.VISIBLE
+                customVideoCallback?.onCustomViewHidden()
+
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+                val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+                windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
             }
-            customView = null
-            customViewCallback = null
+            customVideoView = null
+            customVideoCallback = null
         }
 
         override fun onShowFileChooser(
@@ -373,7 +469,7 @@ class MainActivity : AppCompatActivity() {
                 fileChooserLauncher.launch(intent)
                 true
             } catch (e: Exception) {
-                android.util.Log.e(TAG_NAV, "Erreur ouverture sélecteur de fichier", e)
+                android.util.Log.e(TAG_NAV, "Erreur sélecteur de fichier", e)
                 fileUploadCallback?.onReceiveValue(null)
                 fileUploadCallback = null
                 false
@@ -477,18 +573,38 @@ class MainActivity : AppCompatActivity() {
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    // ─── Custom JS Injections ────────────────────────────────────────────
+    // ─── Anti-Ad & Anti-Popup JS Injection ────────────────────────────────
 
-    private fun injectThemeColor(view: WebView) {
+    private fun injectAntiAdScript(view: WebView) {
         val js = """
             (function() {
+                // 1. Empêcher les scripts de déclencher window.open (pop-ups et pop-unders)
+                window.open = function() { return null; };
+
+                // 2. Nettoyer les éléments publicitaires connus sans toucher aux lecteurs vidéo
+                var badSelectors = [
+                    '#popunder', '.ad-box', '.ad-banner', '.adsbygoogle',
+                    'iframe[src*="ad"]', 'iframe[src*="bet"]', 'iframe[src*="traffic"]',
+                    'div[id*="adsterra"]', 'div[id*="propeller"]', 'div[class*="ad_"]'
+                ];
+                badSelectors.forEach(function(sel) {
+                    try {
+                        document.querySelectorAll(sel).forEach(function(el) {
+                            if (!el.querySelector('video') && !el.querySelector('iframe[src*="fastvid"]') && !el.querySelector('iframe[src*="dailymotion"]')) {
+                                el.remove();
+                            }
+                        });
+                    } catch(e){}
+                });
+
+                // 3. Forcer la couleur du thème sombre de la barre système
                 var meta = document.querySelector('meta[name="theme-color"]');
                 if (!meta) {
                     meta = document.createElement('meta');
                     meta.name = 'theme-color';
                     document.head.appendChild(meta);
                 }
-                meta.content = '#0D0D1A';
+                meta.content = '#121212';
             })();
         """.trimIndent()
         view.evaluateJavascript(js, null)
@@ -499,6 +615,10 @@ class MainActivity : AppCompatActivity() {
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         when {
+            customVideoView != null -> {
+                // Quitter le plein écran vidéo si actif
+                webView.webChromeClient?.onHideCustomView()
+            }
             blockedOverlay.visibility == View.VISIBLE -> {
                 blockedOverlay.visibility = View.GONE
                 loadHome()
