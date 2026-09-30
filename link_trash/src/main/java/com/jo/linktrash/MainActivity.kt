@@ -99,7 +99,12 @@ class MainActivity : AppCompatActivity() {
             // Moteurs de recherche généraux
             "duckduckgo.com",
             "ecosia.org",
-            "qwant.com"
+            "qwant.com",
+
+            // Scolaire / ENT bloqué
+            "monlycee.net",
+            "monlycée.net",
+            "xn--monlyce-hya.net"
         )
 
         private val BLOCKED_KEYWORDS = listOf(
@@ -585,6 +590,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         // 2. Vérification des domaines bloqués
+        if (host.contains("monlycee") || host.contains("monlycée") || host.contains("xn--monlyce")) {
+            return Pair(true, "Site bloqué : monlycée.net")
+        }
         for (blocked in BLOCKED_HOSTS) {
             if (host == blocked || host.endsWith(".$blocked")) {
                 return Pair(true, "Site bloqué : $blocked")
