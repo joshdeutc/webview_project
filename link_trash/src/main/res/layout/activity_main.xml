@@ -56,6 +56,26 @@
             android:contentDescription="Fermer" />
     </LinearLayout>
 
+    <!-- Barre d'onglets (affichée quand au moins 2 onglets sont ouverts) -->
+    <HorizontalScrollView
+        android:id="@+id/tabScrollView"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:background="@color/surface"
+        android:scrollbars="none"
+        android:overScrollMode="never"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/tabStrip"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp" />
+    </HorizontalScrollView>
+
     <!-- Barre de progression -->
     <FrameLayout
         android:id="@+id/progressContainer"
@@ -71,14 +91,14 @@
             android:background="@drawable/progress_gradient" />
     </FrameLayout>
 
-    <!-- Contenu : WebView + Écran vide + Erreur -->
+    <!-- Contenu : WebViews dynamiques + Écran vide + Erreur -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <WebView
-            android:id="@+id/webView"
+        <FrameLayout
+            android:id="@+id/webContainer"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@color/background" />

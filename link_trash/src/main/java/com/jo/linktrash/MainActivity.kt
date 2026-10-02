@@ -15,19 +15,30 @@ import android.os.Environment
 import android.view.View
 import android.webkit.*
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import java.io.ByteArrayInputStream
+import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
+
+    data class Tab(
+        val id: String = UUID.randomUUID().toString(),
+        val webView: WebView,
+        var title: String = "Nouvel onglet",
+        var url: String = "",
+        val parentTabId: String? = null
+    )
 
     companion object {
         private val BLOCKED_HOSTS = setOf(
@@ -152,9 +163,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtHost: TextView
     private lateinit var btnRefresh: ImageButton
     private lateinit var btnClose: ImageButton
+    private lateinit var tabScrollView: HorizontalScrollView
+    private lateinit var tabStrip: LinearLayout
     private lateinit var progressContainer: FrameLayout
     private lateinit var progressBar: View
-    private lateinit var webView: WebView
+    private lateinit var webContainer: FrameLayout
     private lateinit var emptyState: LinearLayout
     private lateinit var errorOverlay: FrameLayout
     private lateinit var blockedOverlay: FrameLayout
@@ -162,7 +175,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtBlockedDesc: TextView
     private lateinit var btnBlockedClose: View
 
-    private var currentUrl: String = ""
+    private val tabs = mutableListOf<Tab>()
+    private var activeTab: Tab? = null
+    private val currentWebView: WebView? get() = activeTab?.webView
+
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
 
     private val filePickerLauncher = registerForActivityResult(
@@ -204,7 +220,6 @@ class MainActivity : AppCompatActivity() {
 
         initViews()
         setupInsets()
-        setupWebView()
         setupActions()
 
         handleIntent(intent)
@@ -223,9 +238,11 @@ class MainActivity : AppCompatActivity() {
         txtHost = findViewById(R.id.txtHost)
         btnRefresh = findViewById(R.id.btnRefresh)
         btnClose = findViewById(R.id.btnClose)
+        tabScrollView = findViewById(R.id.tabScrollView)
+        tabStrip = findViewById(R.id.tabStrip)
         progressContainer = findViewById(R.id.progressContainer)
         progressBar = findViewById(R.id.progressBar)
-        webView = findViewById(R.id.webView)
+        webContainer = findViewById(R.id.webContainer)
         emptyState = findViewById(R.id.emptyState)
         errorOverlay = findViewById(R.id.errorOverlay)
         blockedOverlay = findViewById(R.id.blockedOverlay)
@@ -249,9 +266,141 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun createNewTab(parentTab: Tab? = null): Tab {
+        val newWebView = WebView(this)
+        val tab = Tab(
+            id = UUID.randomUUID().toString(),
+            webView = newWebView,
+            title = "Nouvel onglet",
+            url = "",
+            parentTabId = parentTab?.id
+        )
+
+        configureWebView(newWebView, tab)
+
+        webContainer.addView(
+            newWebView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+
+        tabs.add(tab)
+        renderTabs()
+        return tab
+    }
+
+    private fun selectTab(tab: Tab) {
+        activeTab = tab
+
+        for (t in tabs) {
+            t.webView.visibility = if (t == tab) View.VISIBLE else View.GONE
+        }
+
+        emptyState.visibility = View.GONE
+        hideBlockedOverlay()
+        errorOverlay.visibility = View.GONE
+
+        val host = try { Uri.parse(tab.url).host } catch (_: Exception) { null }
+        txtHost.text = host ?: tab.title.ifEmpty { "Link Trash" }
+
+        val progress = tab.webView.progress
+        if (progress in 1..99) {
+            updateProgress(progress)
+        } else {
+            hideProgress()
+        }
+
+        renderTabs()
+    }
+
+    private fun closeTab(tab: Tab) {
+        val index = tabs.indexOf(tab)
+        if (index == -1) return
+
+        webContainer.removeView(tab.webView)
+        tab.webView.stopLoading()
+        tab.webView.loadUrl("about:blank")
+        tab.webView.clearHistory()
+        tab.webView.removeAllViews()
+        tab.webView.destroy()
+
+        tabs.removeAt(index)
+
+        if (tabs.isEmpty()) {
+            activeTab = null
+            emptyState.visibility = View.VISIBLE
+            txtHost.text = getString(R.string.app_name)
+            hideProgress()
+            renderTabs()
+            finish()
+        } else {
+            if (activeTab == tab) {
+                val parentTab = tabs.find { it.id == tab.parentTabId }
+                val nextTab = parentTab ?: if (index < tabs.size) tabs[index] else tabs.last()
+                selectTab(nextTab)
+            } else {
+                renderTabs()
+            }
+        }
+    }
+
+    private fun renderTabs() {
+        tabStrip.removeAllViews()
+
+        if (tabs.size <= 1) {
+            tabScrollView.visibility = View.GONE
+            return
+        }
+
+        tabScrollView.visibility = View.VISIBLE
+
+        for (tab in tabs) {
+            val tabView = layoutInflater.inflate(R.layout.item_tab, tabStrip, false)
+            val txtTabTitle = tabView.findViewById<TextView>(R.id.txtTabTitle)
+            val btnTabClose = tabView.findViewById<ImageButton>(R.id.btnTabClose)
+
+            val isActive = (tab == activeTab)
+            tabView.setBackgroundResource(if (isActive) R.drawable.bg_tab_active else R.drawable.bg_tab_inactive)
+            txtTabTitle.text = tab.title.ifEmpty {
+                try {
+                    Uri.parse(tab.url).host ?: "Onglet"
+                } catch (_: Exception) {
+                    "Onglet"
+                }
+            }
+            txtTabTitle.setTextColor(
+                ContextCompat.getColor(this, if (isActive) R.color.text_primary else R.color.text_secondary)
+            )
+
+            tabView.setOnClickListener {
+                selectTab(tab)
+            }
+
+            btnTabClose.setOnClickListener {
+                closeTab(tab)
+            }
+
+            tabStrip.addView(tabView)
+        }
+
+        val activeIndex = tabs.indexOf(activeTab)
+        if (activeIndex >= 0) {
+            tabScrollView.post {
+                val child = tabStrip.getChildAt(activeIndex)
+                if (child != null) {
+                    tabScrollView.smoothScrollTo(child.left, 0)
+                }
+            }
+        }
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
-    private fun setupWebView() {
-        webView.settings.apply {
+    private fun configureWebView(wv: WebView, tab: Tab) {
+        wv.setBackgroundColor(ContextCompat.getColor(this, R.color.background))
+
+        wv.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             @Suppress("DEPRECATION")
@@ -273,10 +422,33 @@ class MainActivity : AppCompatActivity() {
 
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
-            setAcceptThirdPartyCookies(webView, true)
+            setAcceptThirdPartyCookies(wv, true)
         }
 
-        webView.webViewClient = object : WebViewClient() {
+        wv.setOnLongClickListener {
+            val result = wv.hitTestResult
+            val type = result.type
+            if (type == WebView.HitTestResult.SRC_ANCHOR_TYPE || type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
+                val extra = result.extra
+                if (!extra.isNullOrEmpty()) {
+                    val popup = PopupMenu(this@MainActivity, wv)
+                    popup.menu.add("Ouvrir dans un nouvel onglet")
+                    popup.setOnMenuItemClickListener { menuItem ->
+                        if (menuItem.title == "Ouvrir dans un nouvel onglet") {
+                            val newTab = createNewTab(parentTab = tab)
+                            selectTab(newTab)
+                            newTab.webView.loadUrl(extra)
+                            true
+                        } else false
+                    }
+                    popup.show()
+                    return@setOnLongClickListener true
+                }
+            }
+            false
+        }
+
+        wv.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url.toString()
                 val scheme = request.url.scheme?.lowercase() ?: ""
@@ -293,6 +465,15 @@ class MainActivity : AppCompatActivity() {
                         }
                         true
                     } catch (_: Exception) {
+                        try {
+                            val parsedIntent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
+                            val fallbackUrl = parsedIntent.getStringExtra("browser_fallback_url")
+                            if (!fallbackUrl.isNullOrEmpty()) {
+                                view.loadUrl(fallbackUrl)
+                                return true
+                            }
+                        } catch (_: Exception) {}
+
                         try {
                             val fallbackIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
                                 addCategory(Intent.CATEGORY_BROWSABLE)
@@ -311,13 +492,17 @@ class MainActivity : AppCompatActivity() {
 
                 val (isBlocked, reason) = isUrlBlocked(url)
                 if (isBlocked) {
-                    showBlockedOverlay(reason)
+                    if (activeTab == tab) {
+                        showBlockedOverlay(reason)
+                    }
                     return true
                 }
 
                 if (request.isForMainFrame) {
-                    currentUrl = url
-                    txtHost.text = request.url.host ?: url
+                    tab.url = url
+                    if (activeTab == tab) {
+                        txtHost.text = request.url.host ?: url
+                    }
                 }
                 return false
             }
@@ -354,26 +539,34 @@ class MainActivity : AppCompatActivity() {
                 val (isBlocked, reason) = isUrlBlocked(url)
                 if (isBlocked) {
                     view.stopLoading()
-                    showBlockedOverlay(reason)
+                    if (activeTab == tab) {
+                        showBlockedOverlay(reason)
+                    }
                     return
                 }
 
-                hideBlockedOverlay()
-                currentUrl = url
+                tab.url = url
                 try {
                     val host = Uri.parse(url).host
                     if (!host.isNullOrEmpty()) {
-                        txtHost.text = host
+                        tab.title = host
                     }
                 } catch (_: Exception) {}
 
-                showProgress()
-                errorOverlay.visibility = View.GONE
+                if (activeTab == tab) {
+                    hideBlockedOverlay()
+                    txtHost.text = tab.title
+                    showProgress()
+                    errorOverlay.visibility = View.GONE
+                }
+                renderTabs()
             }
 
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
-                hideProgress()
+                if (activeTab == tab) {
+                    hideProgress()
+                }
 
                 // Neutralisation dynamique complète des balises vidéo et audio côté DOM
                 view.evaluateJavascript(
@@ -405,7 +598,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 super.onReceivedError(view, request, error)
-                if (request.isForMainFrame) {
+                if (request.isForMainFrame && activeTab == tab) {
                     hideProgress()
                     if (!isNetworkAvailable()) {
                         errorOverlay.visibility = View.VISIBLE
@@ -414,15 +607,21 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        webView.webChromeClient = object : WebChromeClient() {
+        wv.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView, newProgress: Int) {
-                updateProgress(newProgress)
+                if (activeTab == tab) {
+                    updateProgress(newProgress)
+                }
             }
 
             override fun onReceivedTitle(view: WebView, title: String?) {
                 super.onReceivedTitle(view, title)
-                if (!title.isNullOrEmpty() && txtHost.text.isNullOrEmpty()) {
-                    txtHost.text = title
+                if (!title.isNullOrEmpty() && title != "about:blank") {
+                    tab.title = title
+                    if (activeTab == tab) {
+                        txtHost.text = title
+                    }
+                    renderTabs()
                 }
             }
 
@@ -432,18 +631,17 @@ class MainActivity : AppCompatActivity() {
                 isUserGesture: Boolean,
                 resultMsg: android.os.Message?
             ): Boolean {
-                val newWebView = WebView(this@MainActivity)
-                newWebView.webViewClient = object : WebViewClient() {
-                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                        val target = request.url.toString()
-                        this@MainActivity.webView.loadUrl(target)
-                        return true
-                    }
-                }
+                val newTab = createNewTab(parentTab = tab)
+                selectTab(newTab)
                 val transport = resultMsg?.obj as? WebView.WebViewTransport
-                transport?.webView = newWebView
+                transport?.webView = newTab.webView
                 resultMsg?.sendToTarget()
                 return true
+            }
+
+            override fun onCloseWindow(window: WebView?) {
+                super.onCloseWindow(window)
+                closeTab(tab)
             }
 
             override fun onShowFileChooser(
@@ -479,7 +677,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        webView.setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
+        wv.setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
             try {
                 val request = DownloadManager.Request(Uri.parse(url)).apply {
                     setMimeType(mimetype)
@@ -494,40 +692,45 @@ class MainActivity : AppCompatActivity() {
                 }
                 val dm = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                 dm.enqueue(request)
-                Toast.makeText(this, "Téléchargement lancé...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Téléchargement lancé...", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(this, "Erreur téléchargement: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Erreur téléchargement: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun setupActions() {
         btnBack.setOnClickListener {
-            if (webView.canGoBack()) {
-                webView.goBack()
+            handleBackPress()
+        }
+
+        btnRefresh.setOnClickListener {
+            currentWebView?.reload()
+        }
+
+        btnClose.setOnClickListener {
+            val tab = activeTab
+            if (tabs.size > 1 && tab != null) {
+                closeTab(tab)
             } else {
                 finish()
             }
         }
 
-        btnRefresh.setOnClickListener {
-            if (currentUrl.isNotEmpty()) {
-                webView.reload()
+        btnBlockedClose.setOnClickListener {
+            val tab = activeTab
+            if (tabs.size > 1 && tab != null) {
+                closeTab(tab)
+            } else {
+                finish()
             }
         }
 
-        btnClose.setOnClickListener {
-            finish()
-        }
-
-        btnBlockedClose.setOnClickListener {
-            finish()
-        }
-
         findViewById<View>(R.id.btnRetry).setOnClickListener {
-            if (currentUrl.isNotEmpty()) {
+            val tab = activeTab
+            if (tab != null && tab.url.isNotEmpty()) {
                 errorOverlay.visibility = View.GONE
-                webView.loadUrl(currentUrl)
+                tab.webView.loadUrl(tab.url)
             }
         }
     }
@@ -538,23 +741,25 @@ class MainActivity : AppCompatActivity() {
             val targetUrl = uri.toString()
             val (isBlocked, reason) = isUrlBlocked(targetUrl)
             if (isBlocked) {
-                currentUrl = targetUrl
-                txtHost.text = uri.host ?: targetUrl
                 showBlockedOverlay(reason)
                 return
             }
 
             hideBlockedOverlay()
-            currentUrl = targetUrl
             emptyState.visibility = View.GONE
-            webView.visibility = View.VISIBLE
-            txtHost.text = uri.host ?: targetUrl
-            webView.loadUrl(targetUrl)
+
+            if (tabs.isNotEmpty() && activeTab != null && activeTab!!.url.isNotEmpty() && activeTab!!.url != "about:blank") {
+                val newTab = createNewTab()
+                selectTab(newTab)
+                newTab.webView.loadUrl(targetUrl)
+            } else {
+                val tab = if (tabs.isEmpty()) createNewTab().also { selectTab(it) } else activeTab!!
+                tab.webView.loadUrl(targetUrl)
+            }
         } else {
-            if (currentUrl.isEmpty()) {
+            if (tabs.isEmpty()) {
                 hideBlockedOverlay()
                 emptyState.visibility = View.VISIBLE
-                webView.visibility = View.GONE
                 txtHost.text = getString(R.string.app_name)
             }
         }
@@ -691,13 +896,14 @@ class MainActivity : AppCompatActivity() {
     private fun showBlockedOverlay(reason: String) {
         txtBlockedDesc.text = reason.ifEmpty { getString(R.string.blocked_site_desc) }
         blockedOverlay.visibility = View.VISIBLE
-        webView.visibility = View.GONE
+        activeTab?.webView?.visibility = View.GONE
         emptyState.visibility = View.GONE
         hideProgress()
     }
 
     private fun hideBlockedOverlay() {
         blockedOverlay.visibility = View.GONE
+        activeTab?.webView?.visibility = View.VISIBLE
     }
 
     private fun showProgress() {
@@ -715,9 +921,11 @@ class MainActivity : AppCompatActivity() {
         }
         showProgress()
         val totalWidth = progressContainer.width
-        val params = progressBar.layoutParams
-        params.width = (totalWidth * (progress / 100f)).toInt()
-        progressBar.layoutParams = params
+        if (totalWidth > 0) {
+            val params = progressBar.layoutParams
+            params.width = (totalWidth * (progress / 100f)).toInt()
+            progressBar.layoutParams = params
+        }
     }
 
     private fun isNetworkAvailable(): Boolean {
@@ -726,23 +934,30 @@ class MainActivity : AppCompatActivity() {
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
+    private fun handleBackPress() {
         when {
             blockedOverlay.visibility == View.VISIBLE -> {
-                finish()
+                val tab = activeTab
+                if (tabs.size > 1 && tab != null) {
+                    closeTab(tab)
+                } else {
+                    finish()
+                }
             }
             errorOverlay.visibility == View.VISIBLE -> {
                 errorOverlay.visibility = View.GONE
-                if (currentUrl.isNotEmpty()) {
-                    webView.loadUrl(currentUrl)
-                } else {
+                val tab = activeTab
+                if (tab != null && tab.url.isNotEmpty()) {
+                    tab.webView.loadUrl(tab.url)
+                } else if (tabs.isEmpty()) {
                     emptyState.visibility = View.VISIBLE
-                    webView.visibility = View.GONE
                 }
             }
-            webView.canGoBack() -> {
-                webView.goBack()
+            currentWebView?.canGoBack() == true -> {
+                currentWebView?.goBack()
+            }
+            tabs.size > 1 && activeTab != null -> {
+                activeTab?.let { closeTab(it) }
             }
             else -> {
                 @Suppress("DEPRECATION")
@@ -751,18 +966,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        handleBackPress()
+    }
+
     override fun onResume() {
         super.onResume()
-        webView.onResume()
+        tabs.forEach { it.webView.onResume() }
     }
 
     override fun onPause() {
         super.onPause()
-        webView.onPause()
+        tabs.forEach { it.webView.onPause() }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        webView.destroy()
+        for (tab in tabs) {
+            tab.webView.stopLoading()
+            tab.webView.removeAllViews()
+            tab.webView.destroy()
+        }
+        tabs.clear()
     }
 }
