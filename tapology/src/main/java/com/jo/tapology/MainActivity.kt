@@ -730,13 +730,8 @@ class MainActivity : AppCompatActivity() {
                             display: none !important;
                             pointer-events: none !important;
                         }
-                        /* S'assurer que les lecteurs vidéos (YouTube / HTML5) restent au premier plan et cliquables */
-                        iframe, video, .c-video-player, .media--video, .field--name-field-video {
-                            position: relative !important;
-                            z-index: 99999 !important;
-                            pointer-events: auto !important;
-                        }
-                    `;
+                         /* Contrôles du lecteur UFC préservés : aucune règle z-index sur video/iframe */
+`;
                     document.head.appendChild(style);
                 }
 
@@ -744,14 +739,6 @@ class MainActivity : AppCompatActivity() {
                 function cleanupBlockingDialogs() {
                     document.querySelectorAll('.ui-widget-overlay, .ui-dialog-buttonpane, #onetrust-consent-sdk, #onetrust-banner-sdk').forEach(function(el) {
                         el.remove();
-                    });
-                    document.querySelectorAll('.ui-dialog').forEach(function(d) {
-                        var text = (d.innerText || '').trim();
-                        if (text.indexOf('ANNULER') !== -1 || text.indexOf('Cancel') !== -1 || !d.querySelector('iframe, video')) {
-                            var closeBtn = d.querySelector('.ui-dialog-titlebar-close');
-                            if (closeBtn) closeBtn.click();
-                            else d.remove();
-                        }
                     });
                     document.body.classList.remove('c-modal--open');
                 }
@@ -775,9 +762,10 @@ class MainActivity : AppCompatActivity() {
 
                 // 5. Observer les mutations du DOM pour neutraliser immédiatement les modales dynamiques
                 if (!window.__antiBlockerObserver && document.documentElement) {
+                    var __abTimer = null;
                     window.__antiBlockerObserver = new MutationObserver(function() {
-                        cleanupBlockingDialogs();
-                        fixUfcLinks();
+                        if (__abTimer) return;
+                        __abTimer = setTimeout(function() { __abTimer = null; cleanupBlockingDialogs(); fixUfcLinks(); }, 400);
                     });
                     window.__antiBlockerObserver.observe(document.documentElement, { childList: true, subtree: true });
                 }
