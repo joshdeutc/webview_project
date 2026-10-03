@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Typeface
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
@@ -16,6 +17,7 @@ import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.webkit.*
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,9 +32,11 @@ import java.io.ByteArrayInputStream
 import java.net.URLDecoder
 
 /**
- * Watch Wrestling — Streaming de catch professionnel (WWE, AEW, PPV, etc.)
+ * Watch Wrestling & UFC Embedded — Streaming de catch et MMA (WWE, AEW, UFC, etc.)
  *
- * App mono-site sans quota de temps, avec :
+ * App double-onglet :
+ * - Onglet 1 : Watch Wrestling (https://watchwrestling.ae/)
+ * - Onglet 2 : UFC Embedded (https://www.ufc.com/embedded)
  * - Filtrage agressif des publicités, popups et popunders
  * - Décodage direct des liens de redirection vidéo (afiyukent.one/away.php)
  * - Support plein écran pour les lecteurs vidéo intégrés avec rotation paysage
@@ -40,8 +44,14 @@ import java.net.URLDecoder
  */
 class MainActivity : AppCompatActivity() {
 
+    enum class AppTab {
+        WATCH_WRESTLING,
+        UFC
+    }
+
     companion object {
         private const val WATCHWRESTLING_URL = "https://watchwrestling.ae/"
+        private const val UFC_EMBEDDED_URL   = "https://www.ufc.com/embedded"
 
         private const val TAG_NAV    = "WW_NAV"
         private const val TAG_BLOCK  = "WW_BLOCK"
@@ -49,7 +59,7 @@ class MainActivity : AppCompatActivity() {
         private const val TAG_AD     = "WW_AD"
 
         /**
-         * Liste des domaines autorisés : Watch Wrestling et ses passerelles/hébergeurs vidéo.
+         * Liste des domaines autorisés : Watch Wrestling, UFC et leurs passerelles/hébergeurs vidéo.
          */
         private val ALLOWED_DOMAINS = listOf(
             // Watch Wrestling sites
@@ -89,9 +99,22 @@ class MainActivity : AppCompatActivity() {
             "mixdrop.co",
             "mixdrop.to",
 
+            // UFC & Video Embeds
+            "ufc.com",
+            "youtube.com",
+            "youtube-nocookie.com",
+            "youtu.be",
+            "googlevideo.com",
+            "ytimg.com",
+            "imggaming.com",
+            "pub.network",
+            "lndg.page",
+            "addtoany.com",
+
             // CDN & Essential Libraries
             "cloudflare.com",
             "cloudflareinsights.com",
+            "cloudfront.net",
             "jquery.com",
             "bootstrapcdn.com",
             "jsdelivr.net",
@@ -117,7 +140,17 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private lateinit var tabBar: LinearLayout
+    private lateinit var tabWatchWrestling: FrameLayout
+    private lateinit var tabUfc: FrameLayout
+    private lateinit var txtTabWW: TextView
+    private lateinit var txtTabUfc: TextView
+    private lateinit var indicatorWW: View
+    private lateinit var indicatorUfc: View
+
+    private lateinit var webContainer: FrameLayout
     private lateinit var webView: WebView
+    private lateinit var webViewUfc: WebView
     private lateinit var fabRefresh: FloatingActionButton
     private lateinit var progressContainer: FrameLayout
     private lateinit var progressBar: View
@@ -126,6 +159,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var errorOverlay: FrameLayout
     private lateinit var blockedMessage: TextView
     private lateinit var blockedIcon: TextView
+
+    private var currentTab: AppTab = AppTab.WATCH_WRESTLING
+    private val activeWebView: WebView
+        get() = if (currentTab == AppTab.UFC) webViewUfc else webView
 
     private var progressAnimator: android.animation.ValueAnimator? = null
     private var currentMainUrl: String = ""
@@ -175,7 +212,8 @@ class MainActivity : AppCompatActivity() {
 
         setupEdgeToEdge()
         bindViews()
-        setupWebView()
+        setupWebViews()
+        setupTabListeners()
 
         if (!isNetworkAvailable()) {
             showError()
@@ -214,7 +252,14 @@ class MainActivity : AppCompatActivity() {
             return true
         }
 
-        webView.loadUrl(url)
+        val host = uri.host?.lowercase() ?: ""
+        if (host.contains("ufc.com")) {
+            switchTab(AppTab.UFC)
+            webViewUfc.loadUrl(url)
+        } else {
+            switchTab(AppTab.WATCH_WRESTLING)
+            webView.loadUrl(url)
+        }
         return true
     }
 
@@ -235,7 +280,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bindViews() {
+        tabBar = findViewById(R.id.tabBar)
+        tabWatchWrestling = findViewById(R.id.tabWatchWrestling)
+        tabUfc = findViewById(R.id.tabUfc)
+        txtTabWW = findViewById(R.id.txtTabWW)
+        txtTabUfc = findViewById(R.id.txtTabUfc)
+        indicatorWW = findViewById(R.id.indicatorWW)
+        indicatorUfc = findViewById(R.id.indicatorUfc)
+
+        webContainer = findViewById(R.id.webContainer)
         webView = findViewById(R.id.webView)
+        webViewUfc = findViewById(R.id.webViewUfc)
+
         fabRefresh = findViewById(R.id.fabRefresh)
         progressContainer = findViewById(R.id.progressContainer)
         progressBar = findViewById(R.id.progressBar)
@@ -245,34 +301,88 @@ class MainActivity : AppCompatActivity() {
         blockedMessage = findViewById(R.id.blockedMessage)
         blockedIcon = findViewById(R.id.blockedIcon)
 
-        fabRefresh.setOnClickListener { webView.reload() }
+        fabRefresh.setOnClickListener { activeWebView.reload() }
 
         findViewById<View>(R.id.btnGoHome).setOnClickListener {
             blockedOverlay.visibility = View.GONE
-            loadHome()
+            if (currentTab == AppTab.WATCH_WRESTLING) {
+                loadHome()
+            } else {
+                loadUfc()
+            }
         }
 
         findViewById<View>(R.id.btnRetry).setOnClickListener {
             if (isNetworkAvailable()) {
                 errorOverlay.visibility = View.GONE
-                webView.reload()
+                activeWebView.reload()
             } else {
                 Toast.makeText(this, R.string.no_internet, Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+    private fun setupTabListeners() {
+        tabWatchWrestling.setOnClickListener { switchTab(AppTab.WATCH_WRESTLING) }
+        tabUfc.setOnClickListener { switchTab(AppTab.UFC) }
+    }
+
+    private fun switchTab(tab: AppTab) {
+        if (currentTab == tab) return
+        currentTab = tab
+
+        if (tab == AppTab.WATCH_WRESTLING) {
+            txtTabWW.setTextColor(ContextCompat.getColor(this, R.color.white))
+            txtTabWW.setTypeface(null, Typeface.BOLD)
+            indicatorWW.visibility = View.VISIBLE
+
+            txtTabUfc.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+            txtTabUfc.setTypeface(null, Typeface.NORMAL)
+            indicatorUfc.visibility = View.INVISIBLE
+
+            webView.visibility = View.VISIBLE
+            webViewUfc.visibility = View.GONE
+        } else {
+            txtTabUfc.setTextColor(ContextCompat.getColor(this, R.color.white))
+            txtTabUfc.setTypeface(null, Typeface.BOLD)
+            indicatorUfc.visibility = View.VISIBLE
+
+            txtTabWW.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+            txtTabWW.setTypeface(null, Typeface.NORMAL)
+            indicatorWW.visibility = View.INVISIBLE
+
+            webViewUfc.visibility = View.VISIBLE
+            webView.visibility = View.GONE
+
+            if (webViewUfc.url.isNullOrEmpty()) {
+                loadUfc()
+            }
+        }
+
+        hideSplash()
+        hideProgress()
+    }
+
     private fun loadHome() {
         webView.loadUrl(WATCHWRESTLING_URL)
     }
 
+    private fun loadUfc() {
+        webViewUfc.loadUrl(UFC_EMBEDDED_URL)
+    }
+
+    private fun setupWebViews() {
+        configureWebView(webView, isUfcTab = false)
+        configureWebView(webViewUfc, isUfcTab = true)
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
-    private fun setupWebView() {
+    private fun configureWebView(wv: WebView, isUfcTab: Boolean) {
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
-        cookieManager.setAcceptThirdPartyCookies(webView, true)
+        cookieManager.setAcceptThirdPartyCookies(wv, true)
 
-        webView.settings.apply {
+        wv.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
@@ -293,8 +403,8 @@ class MainActivity : AppCompatActivity() {
             userAgentString = currentAgent.replace("; wv", "")
         }
 
-        webView.webViewClient = WatchWrestlingWebViewClient()
-        webView.webChromeClient = WatchWrestlingChromeClient()
+        wv.webViewClient = WatchWrestlingWebViewClient(isUfcTab)
+        wv.webChromeClient = WatchWrestlingChromeClient()
     }
 
     private fun isUrlAllowed(url: String): Boolean {
@@ -330,7 +440,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private inner class WatchWrestlingWebViewClient : WebViewClient() {
+    private inner class WatchWrestlingWebViewClient(private val isUfcTab: Boolean) : WebViewClient() {
 
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
             val url = request.url.toString()
@@ -376,17 +486,21 @@ class MainActivity : AppCompatActivity() {
 
         override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
             super.onPageStarted(view, url, favicon)
-            currentMainUrl = url
-            android.util.Log.i(TAG_NAV, "PAGE_START $url")
-            showProgress()
-            errorOverlay.visibility = View.GONE
+            if (view == activeWebView) {
+                currentMainUrl = url
+                android.util.Log.i(TAG_NAV, "PAGE_START $url")
+                showProgress()
+                errorOverlay.visibility = View.GONE
+            }
         }
 
         override fun onPageFinished(view: WebView, url: String) {
             super.onPageFinished(view, url)
-            android.util.Log.i(TAG_NAV, "PAGE_DONE $url")
-            hideProgress()
-            hideSplash()
+            if (view == activeWebView) {
+                android.util.Log.i(TAG_NAV, "PAGE_DONE $url")
+                hideProgress()
+                hideSplash()
+            }
             injectAntiAdScript(view)
         }
 
@@ -394,7 +508,7 @@ class MainActivity : AppCompatActivity() {
             super.onReceivedError(view, request, error)
             val frameType = if (request.isForMainFrame) "MAIN" else "SUB"
             android.util.Log.e(TAG_NAV, "PAGE_ERROR [$frameType] url=${request.url} code=${error.errorCode} desc=${error.description}")
-            if (request.isForMainFrame) {
+            if (request.isForMainFrame && view == activeWebView) {
                 showError()
             }
         }
@@ -404,7 +518,9 @@ class MainActivity : AppCompatActivity() {
 
         override fun onProgressChanged(view: WebView, newProgress: Int) {
             super.onProgressChanged(view, newProgress)
-            updateProgress(newProgress)
+            if (view == activeWebView) {
+                updateProgress(newProgress)
+            }
         }
 
         override fun onShowCustomView(view: View, callback: CustomViewCallback) {
@@ -430,7 +546,8 @@ class MainActivity : AppCompatActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             ))
-            webView.visibility = View.GONE
+            tabBar.visibility = View.GONE
+            webContainer.visibility = View.GONE
             fabRefresh.visibility = View.GONE
         }
 
@@ -438,7 +555,8 @@ class MainActivity : AppCompatActivity() {
             customVideoView?.let { view ->
                 val decorView = window.decorView as FrameLayout
                 decorView.removeView(view)
-                webView.visibility = View.VISIBLE
+                tabBar.visibility = View.VISIBLE
+                webContainer.visibility = View.VISIBLE
                 fabRefresh.visibility = View.VISIBLE
                 customVideoCallback?.onCustomViewHidden()
 
@@ -585,12 +703,16 @@ class MainActivity : AppCompatActivity() {
                 var badSelectors = [
                     '#popunder', '.ad-box', '.ad-banner', '.adsbygoogle',
                     'iframe[src*="ad"]', 'iframe[src*="bet"]', 'iframe[src*="traffic"]',
-                    'div[id*="adsterra"]', 'div[id*="propeller"]', 'div[class*="ad_"]'
+                    'div[id*="adsterra"]', 'div[id*="propeller"]', 'div[class*="ad_"]',
+                    '#onetrust-consent-sdk', '#onetrust-banner-sdk'
                 ];
                 badSelectors.forEach(function(sel) {
                     try {
                         document.querySelectorAll(sel).forEach(function(el) {
-                            if (!el.querySelector('video') && !el.querySelector('iframe[src*="fastvid"]') && !el.querySelector('iframe[src*="dailymotion"]')) {
+                            if (!el.querySelector('video') && 
+                                !el.querySelector('iframe[src*="fastvid"]') && 
+                                !el.querySelector('iframe[src*="dailymotion"]') &&
+                                !el.querySelector('iframe[src*="youtube"]')) {
                                 el.remove();
                             }
                         });
@@ -617,13 +739,19 @@ class MainActivity : AppCompatActivity() {
         when {
             customVideoView != null -> {
                 // Quitter le plein écran vidéo si actif
-                webView.webChromeClient?.onHideCustomView()
+                activeWebView.webChromeClient?.onHideCustomView()
             }
             blockedOverlay.visibility == View.VISIBLE -> {
                 blockedOverlay.visibility = View.GONE
-                loadHome()
+                if (currentTab == AppTab.WATCH_WRESTLING) loadHome() else loadUfc()
             }
-            webView.canGoBack() -> webView.goBack()
+            activeWebView.canGoBack() -> {
+                activeWebView.goBack()
+            }
+            currentTab == AppTab.UFC -> {
+                // Retour à l'onglet Watch Wrestling si au début de l'historique UFC
+                switchTab(AppTab.WATCH_WRESTLING)
+            }
             else -> {
                 @Suppress("DEPRECATION")
                 super.onBackPressed()
@@ -636,15 +764,18 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         webView.onResume()
+        webViewUfc.onResume()
     }
 
     override fun onPause() {
         super.onPause()
         webView.onPause()
+        webViewUfc.onPause()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         webView.destroy()
+        webViewUfc.destroy()
     }
 }

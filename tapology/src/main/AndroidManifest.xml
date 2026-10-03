@@ -38,6 +38,15 @@
                 <data android:scheme="http" android:host="watchwrestling.ae" />
                 <data android:scheme="http" android:host="www.watchwrestling.ae" />
             </intent-filter>
+
+            <!-- Links to ufc.com open directly in the app -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="ufc.com" />
+                <data android:scheme="https" android:host="www.ufc.com" />
+            </intent-filter>
         </activity>
     </application>
 
