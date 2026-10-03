@@ -356,6 +356,8 @@ class MainActivity : AppCompatActivity() {
 
             if (webViewUfc.url.isNullOrEmpty()) {
                 loadUfc()
+            } else {
+                injectAntiAdScript(webViewUfc)
             }
         }
 
@@ -520,6 +522,9 @@ class MainActivity : AppCompatActivity() {
             super.onProgressChanged(view, newProgress)
             if (view == activeWebView) {
                 updateProgress(newProgress)
+            }
+            if (newProgress >= 40) {
+                injectAntiAdScript(view)
             }
         }
 
@@ -699,12 +704,89 @@ class MainActivity : AppCompatActivity() {
                 // 1. Empêcher les scripts de déclencher window.open (pop-ups et pop-unders)
                 window.open = function() { return null; };
 
-                // 2. Nettoyer les éléments publicitaires connus sans toucher aux lecteurs vidéo
+                // 2. Injecter les styles CSS pour neutraliser les overlays bloquants et modales UFC
+                var styleId = 'anti-blocker-style';
+                if (!document.getElementById(styleId) && document.head) {
+                    var style = document.createElement('style');
+                    style.id = styleId;
+                    style.innerHTML = `
+                        /* Neutraliser le voile transparent noir Drupal / UFC */
+                        .ui-widget-overlay {
+                            display: none !important;
+                            pointer-events: none !important;
+                            opacity: 0 !important;
+                            visibility: hidden !important;
+                        }
+                        /* Masquer la barre avec le bouton ANNULER / Cancel au milieu de l'écran */
+                        .ui-dialog-buttonpane {
+                            display: none !important;
+                        }
+                        /* Permettre aux clics de traverser les overlays cosmétiques de cartes */
+                        .c-card__overlay {
+                            pointer-events: none !important;
+                        }
+                        /* Bannières cookies OneTrust */
+                        #onetrust-consent-sdk, #onetrust-banner-sdk, .onetrust-pc-dark {
+                            display: none !important;
+                            pointer-events: none !important;
+                        }
+                        /* S'assurer que les lecteurs vidéos (YouTube / HTML5) restent au premier plan et cliquables */
+                        iframe, video, .c-video-player, .media--video, .field--name-field-video {
+                            position: relative !important;
+                            z-index: 99999 !important;
+                            pointer-events: auto !important;
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+
+                // 3. Fermer et supprimer les boîtes de dialogue modales bloquantes
+                function cleanupBlockingDialogs() {
+                    document.querySelectorAll('.ui-widget-overlay, .ui-dialog-buttonpane, #onetrust-consent-sdk, #onetrust-banner-sdk').forEach(function(el) {
+                        el.remove();
+                    });
+                    document.querySelectorAll('.ui-dialog').forEach(function(d) {
+                        var text = (d.innerText || '').trim();
+                        if (text.indexOf('ANNULER') !== -1 || text.indexOf('Cancel') !== -1 || !d.querySelector('iframe, video')) {
+                            var closeBtn = d.querySelector('.ui-dialog-titlebar-close');
+                            if (closeBtn) closeBtn.click();
+                            else d.remove();
+                        }
+                    });
+                    document.body.classList.remove('c-modal--open');
+                }
+                cleanupBlockingDialogs();
+
+                // 4. Transformer les liens d'épisodes UFC pour ouvrir directement la page vidéo sans modale AJAX
+                function fixUfcLinks() {
+                    document.querySelectorAll('a[data-modal-callback]').forEach(function(a) {
+                        var href = a.getAttribute('href');
+                        a.removeAttribute('data-modal-callback');
+                        if (href) {
+                            a.onclick = function(e) {
+                                e.stopPropagation();
+                                window.location.href = href;
+                                return false;
+                            };
+                        }
+                    });
+                }
+                fixUfcLinks();
+
+                // 5. Observer les mutations du DOM pour neutraliser immédiatement les modales dynamiques
+                if (!window.__antiBlockerObserver && document.documentElement) {
+                    window.__antiBlockerObserver = new MutationObserver(function() {
+                        cleanupBlockingDialogs();
+                        fixUfcLinks();
+                    });
+                    window.__antiBlockerObserver.observe(document.documentElement, { childList: true, subtree: true });
+                }
+
+                // 6. Nettoyer les éléments publicitaires connus sans toucher aux lecteurs vidéo
                 var badSelectors = [
                     '#popunder', '.ad-box', '.ad-banner', '.adsbygoogle',
                     'iframe[src*="ad"]', 'iframe[src*="bet"]', 'iframe[src*="traffic"]',
-                    'div[id*="adsterra"]', 'div[id*="propeller"]', 'div[class*="ad_"]',
-                    '#onetrust-consent-sdk', '#onetrust-banner-sdk'
+                    'div[id*="adsterra"]', 'div[id*="propeller"]', 'div[class*="ad_"]'
                 ];
                 badSelectors.forEach(function(sel) {
                     try {
@@ -719,14 +801,14 @@ class MainActivity : AppCompatActivity() {
                     } catch(e){}
                 });
 
-                // 3. Forcer la couleur du thème sombre de la barre système
+                // 7. Forcer la couleur du thème sombre de la barre système
                 var meta = document.querySelector('meta[name="theme-color"]');
-                if (!meta) {
+                if (!meta && document.head) {
                     meta = document.createElement('meta');
                     meta.name = 'theme-color';
                     document.head.appendChild(meta);
                 }
-                meta.content = '#121212';
+                if (meta) meta.content = '#121212';
             })();
         """.trimIndent()
         view.evaluateJavascript(js, null)
