@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">anime-sama.to</domain>
+        <domain includeSubdomains="true">anime-sama.pw</domain>
+        <domain includeSubdomains="true">anime-sama.org</domain>
+        <domain includeSubdomains="true">sibnet.ru</domain>
+        <domain includeSubdomains="true">sendvid.com</domain>
+        <domain includeSubdomains="true">vidmoly.me</domain>
+        <domain includeSubdomains="true">vidmoly.to</domain>
+        <domain includeSubdomains="true">myvi.tv</domain>
+        <domain includeSubdomains="true">myvi.ru</domain>
+        <domain includeSubdomains="true">streamtape.com</domain>
+        <domain includeSubdomains="true">vk.com</domain>
+    </domain-config>
+</network-security-config>
