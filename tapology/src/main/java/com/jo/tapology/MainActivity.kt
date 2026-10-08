@@ -53,7 +53,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val WATCHWRESTLING_URL = "https://watchwrestling.ae/"
         private const val UFC_EMBEDDED_URL   = "https://www.ufc.com/embedded"
-        private const val FIGHT_URL          = "https://ok.ru/video/15056354347631"
+        private const val FIGHT_URL          = "https://www.youtube.com/watch?v=06k5FbGNQV0"
 
         private const val TAG_NAV    = "WW_NAV"
         private const val TAG_BLOCK  = "WW_BLOCK"
@@ -263,7 +263,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val host = uri.host?.lowercase() ?: ""
-        if (url.contains("15056354347631") || url.contains("ok.ru/video")) {
+        if (url.contains("06k5FbGNQV0") || url.contains("15056354347631") || url.contains("ok.ru/video")) {
             switchTab(AppTab.FIGHT)
             webViewFight.loadUrl(url)
         } else if (host.contains("ufc.com")) {
