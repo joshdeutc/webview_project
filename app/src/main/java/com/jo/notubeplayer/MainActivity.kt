@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity() {
         private const val SNCF_URL = "https://www.sncf-connect.com/"
         private const val MARMITON_URL = "https://www.marmiton.org/"
         private const val NOVETHIC_URL = "https://www.novethic.fr/"
+        private const val YOUTUBE_URL = "https://m.youtube.com/"
         private const val INSTAGRAM_URL = "https://www.instagram.com/"
 
         // Le fil des comptes suivis, chronologique, au lieu de l'accueil algorithmique.
@@ -80,6 +81,11 @@ class MainActivity : AppCompatActivity() {
             "axeptio.eu",
             "typekit.net",
             "use.typekit.net",
+            // YouTube pour tests
+            "youtube.com",
+            "youtu.be",
+            "ytimg.com",
+            "googlevideo.com",
             // Instagram + ses CDN/hôtes de connexion (les médias sont filtrés plus bas,
             // mais les domaines doivent rester joignables pour le login et le HTML.)
             "instagram.com",
@@ -112,6 +118,7 @@ class MainActivity : AppCompatActivity() {
     // Bottom Buttons
     private lateinit var btnNavNotube: Button
     private lateinit var btnNavNovethic: Button
+    private lateinit var btnNavYoutube: Button
     private lateinit var btnNavBerserk: Button
     private lateinit var btnNavDoctolib: Button
     private lateinit var btnNavSncf: Button
@@ -270,6 +277,7 @@ class MainActivity : AppCompatActivity() {
 
         btnNavNotube = findViewById(R.id.btnNavNotube)
         btnNavNovethic = findViewById(R.id.btnNavNovethic)
+        btnNavYoutube = findViewById(R.id.btnNavYoutube)
         btnNavBerserk = findViewById(R.id.btnNavBerserk)
         btnNavDoctolib = findViewById(R.id.btnNavDoctolib)
         btnNavSncf = findViewById(R.id.btnNavSncf)
@@ -295,6 +303,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupScrollableMenu() {
         btnNavNotube.setOnClickListener { loadNotube() }
         btnNavNovethic.setOnClickListener { webView.loadUrl(NOVETHIC_URL) }
+        btnNavYoutube.setOnClickListener { webView.loadUrl(YOUTUBE_URL) }
         btnNavBerserk.setOnClickListener { webView.loadUrl(BERSERK_URL) }
         btnNavDoctolib.setOnClickListener { webView.loadUrl(DOCTOLIB_URL) }
         btnNavSncf.setOnClickListener { webView.loadUrl(SNCF_URL) }
