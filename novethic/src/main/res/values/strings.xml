@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Novethic</string>
+    <string name="loading">Chargement de Novethic…</string>
+    <string name="no_internet">Pas de connexion Internet</string>
+    <string name="check_connection">Veuillez vérifier votre connexion réseau.</string>
+    <string name="retry">Réessayer</string>
+    <string name="go_home">Retour à la une</string>
+    <string name="share">Partager</string>
+    <string name="refresh">Rafraîchir</string>
+    <string name="tab_home">À la Une</string>
+    <string name="tab_env">Environnement</string>
+    <string name="tab_eco">Éco &amp; Social</string>
+    <string name="tab_finance">Finance durable</string>
+    <string name="tab_decryptages">Décryptages</string>
+</resources>
