@@ -1,0 +1,50 @@
+name: Release APKs (Time-Locked)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    # Cet environnement impose le Wait Timer (ex: 24h ou 48h) configuré dans les réglages GitHub
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Decode Release Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > /tmp/release.jks
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build and Sign All Release APKs
+        env:
+          RELEASE_KEYSTORE_FILE: /tmp/release.jks
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Clean up Keystore file
+        if: always()
+        run: rm -f /tmp/release.jks
+
+      - name: Upload Release APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: webview-release-apks
+          path: '**/build/outputs/apk/release/*.apk'
+          retention-days: 14
