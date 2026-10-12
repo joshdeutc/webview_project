@@ -41,11 +41,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val NOTUBE_URL = "https://notube.net/"
         private const val BERSERK_URL = "https://readberserk.com/"
-        private const val DOCTOLIB_URL = "https://www.doctolib.fr/"
-        private const val SNCF_URL = "https://www.sncf-connect.com/"
-        private const val MARMITON_URL = "https://www.marmiton.org/"
         private const val NOVETHIC_URL = "https://www.novethic.fr/"
-        private const val YOUTUBE_URL = "https://m.youtube.com/"
         private const val INSTAGRAM_URL = "https://www.instagram.com/"
 
         // Le fil des comptes suivis, chronologique, au lieu de l'accueil algorithmique.
@@ -67,25 +63,16 @@ class MainActivity : AppCompatActivity() {
             "notube.net",
             "notube.io",
             "readberserk.com",
-            "doctolib.fr",
             "appconsent.io",
             "didomi.io",
             "consensu.org",
             "cloudflare.com",
             "google.com",
-            "sncf-connect.com",
-            "sncf.com",
-            "marmiton.org",
             // Novethic & polices / consent
             "novethic.fr",
             "axeptio.eu",
             "typekit.net",
             "use.typekit.net",
-            // YouTube pour tests
-            "youtube.com",
-            "youtu.be",
-            "ytimg.com",
-            "googlevideo.com",
             // Instagram + ses CDN/hôtes de connexion (les médias sont filtrés plus bas,
             // mais les domaines doivent rester joignables pour le login et le HTML.)
             "instagram.com",
@@ -118,11 +105,7 @@ class MainActivity : AppCompatActivity() {
     // Bottom Buttons
     private lateinit var btnNavNotube: Button
     private lateinit var btnNavNovethic: Button
-    private lateinit var btnNavYoutube: Button
     private lateinit var btnNavBerserk: Button
-    private lateinit var btnNavDoctolib: Button
-    private lateinit var btnNavSncf: Button
-    private lateinit var btnNavMarmiton: Button
     private lateinit var btnNavInstagram: Button
     private lateinit var btnNavAntigravity: Button
 
@@ -277,11 +260,7 @@ class MainActivity : AppCompatActivity() {
 
         btnNavNotube = findViewById(R.id.btnNavNotube)
         btnNavNovethic = findViewById(R.id.btnNavNovethic)
-        btnNavYoutube = findViewById(R.id.btnNavYoutube)
         btnNavBerserk = findViewById(R.id.btnNavBerserk)
-        btnNavDoctolib = findViewById(R.id.btnNavDoctolib)
-        btnNavSncf = findViewById(R.id.btnNavSncf)
-        btnNavMarmiton = findViewById(R.id.btnNavMarmiton)
         btnNavInstagram = findViewById(R.id.btnNavInstagram)
         btnNavAntigravity = findViewById(R.id.btnNavAntigravity)
 
@@ -303,11 +282,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupScrollableMenu() {
         btnNavNotube.setOnClickListener { loadNotube() }
         btnNavNovethic.setOnClickListener { webView.loadUrl(NOVETHIC_URL) }
-        btnNavYoutube.setOnClickListener { webView.loadUrl(YOUTUBE_URL) }
         btnNavBerserk.setOnClickListener { webView.loadUrl(BERSERK_URL) }
-        btnNavDoctolib.setOnClickListener { webView.loadUrl(DOCTOLIB_URL) }
-        btnNavSncf.setOnClickListener { webView.loadUrl(SNCF_URL) }
-        btnNavMarmiton.setOnClickListener { webView.loadUrl(MARMITON_URL) }
         btnNavInstagram.setOnClickListener { webView.loadUrl(INSTAGRAM_FEED_URL) }
         btnNavAntigravity.setOnClickListener { webView.loadUrl(ANTIGRAVITY_URL) }
     }
@@ -417,19 +392,6 @@ class MainActivity : AppCompatActivity() {
         return host.startsWith("scontent")
     }
 
-    private fun applyMarmitonWindowInset(url: String) {
-        val extraInset = resources.getDimensionPixelSize(R.dimen.marmiton_bottom_inset)
-        val targetBottom = if (url.contains("marmiton.org")) {
-            webViewBasePaddingBottom + extraInset
-        } else {
-            webViewBasePaddingBottom
-        }
-
-        if (webView.paddingBottom != targetBottom) {
-            webView.setPadding(webView.paddingLeft, webView.paddingTop, webView.paddingRight, targetBottom)
-        }
-    }
-
     private fun isAudioRequest(request: WebResourceRequest): Boolean {
         val headers = request.requestHeaders ?: emptyMap()
         val secFetchDest = (headers["Sec-Fetch-Dest"] ?: headers["sec-fetch-dest"] ?: "").lowercase()
@@ -523,7 +485,6 @@ class MainActivity : AppCompatActivity() {
             android.util.Log.i(TAG_NAV, "PAGE_START $url")
             showProgress()
             errorOverlay.visibility = View.GONE
-            applyMarmitonWindowInset(url)
 
             // Coupe le chargement des images côté WebView sur Instagram.
             webView.settings.blockNetworkImage = isCurrentUrlInstagram(url)
@@ -788,33 +749,6 @@ class MainActivity : AppCompatActivity() {
                     document.head.appendChild(meta);
                 }
                 meta.content = '#0D0D1A';
-
-                if (window.location.hostname.includes('marmiton.org')) {
-                    // Supprimer par prévention tous les target="_blank" des liens pour qu'ils s'ouvrent dans la vue actuelle
-                    setInterval(function() {
-                        document.querySelectorAll('a[target="_blank"]').forEach(function(a) {
-                            a.removeAttribute('target');
-                        });
-
-                        // Accepter automatiquement les cookies didomi
-                        var acceptBtn = document.querySelector('#didomi-notice-agree-button');
-                        if (acceptBtn) {
-                            acceptBtn.click();
-                        }
-
-                        // Fermer la bannière intelligente d'application
-                        var appBannerClose = document.querySelector('.af-smart-banner-closeBtn');
-                        if (appBannerClose) {
-                            appBannerClose.click();
-                        }
-                    }, 1000);
-
-                    var style = document.createElement('style');
-                    style.innerHTML = `
-                        .af-smart-banner { display: none !important; }
-                    `;
-                    document.head.appendChild(style);
-                }
 
                 if (window.location.hostname.includes('novethic.fr')) {
                     setInterval(function() {

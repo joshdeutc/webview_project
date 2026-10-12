@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Golden ring backdrop -->
+    <path
+        android:fillColor="#280C3A"
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="2.5"
+        android:pathData="M54,23 C71.12,23 85,36.88 85,54 C85,71.12 71.12,85 54,85 C36.88,85 23,71.12 23,54 C23,36.88 36.88,23 54,23 Z" />
+
+    <!-- Shibari / Triskelion Knot Outer Curves (Rich Warm Gold) -->
+    <!-- Top loop -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M54,30 C45,30 42,42 54,54 C66,66 78,63 78,54 C78,45 66,42 54,54" />
+
+    <!-- Bottom left loop -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M33,66 C38,73 50,68 54,54 C58,40 50,30 42,35 C34,40 46,50 54,54" />
+
+    <!-- Bottom right loop -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M75,66 C70,73 58,68 54,54 C50,40 58,30 66,35 C74,40 62,50 54,54" />
+
+    <!-- Center Interlocking Core Ring (Gold Highlight) -->
+    <path
+        android:strokeColor="#FDE68A"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"
+        android:pathData="M54,44 C59.5,44 64,48.5 64,54 C64,59.5 59.5,64 54,64 C48.5,64 44,59.5 44,54 C44,48.5 48.5,44 54,44 Z" />
+
+    <!-- Center Diamond Sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,50 L56.5,54 L54,58 L51.5,54 Z" />
+</vector>

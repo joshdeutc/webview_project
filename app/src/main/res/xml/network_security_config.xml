@@ -4,6 +4,5 @@
         <domain includeSubdomains="true">notube.net</domain>
         <domain includeSubdomains="true">notube.io</domain>
         <domain includeSubdomains="true">readberserk.com</domain>
-        <domain includeSubdomains="true">doctolib.fr</domain>
     </domain-config>
 </network-security-config>

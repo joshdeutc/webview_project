@@ -9,13 +9,9 @@
     <string name="download_failed">Échec du téléchargement</string>
     <string name="video_download_blocked">Le téléchargement de vidéos n\'est pas autorisé.</string>
     <string name="nav_notube">NoTube</string>
+    <string name="nav_novethic">Novethic</string>
     <string name="nav_berserk">Berserk</string>
-    <string name="nav_doctolib">Doctolib</string>
-    <string name="nav_sncf">SNCF</string>
-    <string name="nav_marmiton">Marmiton</string>
     <string name="nav_instagram">Instagram</string>
     <string name="nav_antigravity">Antigravity</string>
-    <string name="nav_novethic">Novethic</string>
-    <string name="nav_youtube">YouTube</string>
     <string name="external_url_not_allowed">🚫 Le domaine \"%1$s\" n\'est pas dans votre liste autorisée.</string>
 </resources>

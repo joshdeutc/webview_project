@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Glowing circular plate -->
+    <path
+        android:fillColor="#0D281E"
+        android:strokeColor="#10B981"
+        android:strokeWidth="2.5"
+        android:pathData="M54,23 C71.12,23 85,36.88 85,54 C85,71.12 71.12,85 54,85 C36.88,85 23,71.12 23,54 C23,36.88 36.88,23 54,23 Z" />
+
+    <!-- Trash can lid handle & bar -->
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M48,33 h12 v3 h-12 z" />
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M34,37 h40 v4 h-40 z" />
+
+    <!-- Trash can body -->
+    <path
+        android:fillColor="#059669"
+        android:pathData="M38,43 L41,75 C41.2,76.5 42.5,77.5 44,77.5 L64,77.5 C65.5,77.5 66.8,76.5 67,75 L70,43 Z" />
+
+    <!-- Vertical slots on bin -->
+    <path
+        android:fillColor="#0D281E"
+        android:pathData="M46,47 h3 v24 h-3 z M52.5,47 h3 v24 h-3 z M59,47 h3 v24 h-3 z" />
+
+    <!-- Overlay chain link emblem (Electric Neon Link) -->
+    <!-- Link 1 (upper left loop) -->
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M48,51 C45,48 40,48 37,51 C34,54 34,59 37,62 L42,67 C45,70 50,70 53,67 L51,65 C49,67 46,67 44,65 L39,60 C37,58 37,55 39,53 C41,51 44,51 46,53 L48,51 Z" />
+
+    <!-- Link 2 (lower right loop, connected) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,57 C63,60 68,60 71,57 C74,54 74,49 71,46 L66,41 C63,38 58,38 55,41 L57,43 C59,41 62,41 64,43 L69,48 C71,50 71,53 69,55 C67,57 64,57 62,55 L60,57 Z" />
+</vector>

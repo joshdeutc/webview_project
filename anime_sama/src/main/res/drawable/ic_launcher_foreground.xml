@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Glowing outer cyber ring -->
+    <path
+        android:fillColor="#1A1530"
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="2.5"
+        android:pathData="M54,22 C71.67,22 86,36.33 86,54 C86,71.67 71.67,86 54,86 C36.33,86 22,71.67 22,54 C22,36.33 36.33,22 54,22 Z" />
+
+    <!-- Magenta accent crest -->
+    <path
+        android:fillColor="#FF2A6D"
+        android:pathData="M54,26 C69.46,26 82,38.54 82,54 C82,56.5 81.67,58.9 81.06,61.2 C79.2,46.5 68.1,35.1 54,33 C44.5,33 36.4,38.3 32,46 C35.2,34.4 43.6,26 54,26 Z" />
+
+    <!-- Sharp Play / Katana Blade Triangle -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M43,36 L72,54 L43,72 Z" />
+
+    <!-- Inner Neon Magenta Core -->
+    <path
+        android:fillColor="#FF2A6D"
+        android:pathData="M46,42 L65,54 L46,66 Z" />
+
+    <!-- Center White Shuriken Sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,47 L56,53 L62,54 L56,55 L54,61 L52,55 L46,54 L52,53 Z" />
+</vector>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Crimson backdrop glow circle -->
+    <path
+        android:fillColor="#2D060A"
+        android:strokeColor="#E50914"
+        android:strokeWidth="2.5"
+        android:pathData="M54,23 C71.12,23 85,36.88 85,54 C85,71.12 71.12,85 54,85 C36.88,85 23,71.12 23,54 C23,36.88 36.88,23 54,23 Z" />
+
+    <!-- Outer Flame Body (Vivid Ruby Red) -->
+    <path
+        android:fillColor="#E50914"
+        android:pathData="M54,26 C57,34 66,41 68,48 C70,55 69,63 65,70 C61,77 53,80 46,78 C39,76 34,70 33,63 C32,54 36,46 43,40 C43,47 46,51 49,53 C49,43 51,33 54,26 Z" />
+
+    <!-- Mid Flame Layer (Warm Orange-Red Heart Curve) -->
+    <path
+        android:fillColor="#FF3B30"
+        android:pathData="M55,39 C58,45 64,49 63,56 C62,63 56,69 49,69 C43,69 40,64 41,59 C42,54 45,50 49,47 C50,51 52,53 54,54 C53,49 53,44 55,39 Z" />
+
+    <!-- Inner Core Ember (Golden Amber) -->
+    <path
+        android:fillColor="#FF9F0A"
+        android:pathData="M53,49 C56,53 59,56 57,61 C55,66 50,68 47,66 C45,64 45,60 47,57 C48,55 50,53 51,51 C52,54 53,55 54,55 C53,53 53,51 53,49 Z" />
+</vector>
