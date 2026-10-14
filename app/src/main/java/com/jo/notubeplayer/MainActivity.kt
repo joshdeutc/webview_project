@@ -43,6 +43,12 @@ class MainActivity : AppCompatActivity() {
         private const val BERSERK_URL = "https://readberserk.com/"
         private const val NOVETHIC_URL = "https://www.novethic.fr/"
         private const val COMUTEC_URL = "https://cvtheque.comutec.org/authenticated"
+        private const val INSTAGRAM_URL = "https://www.instagram.com/"
+
+        // Le fil des comptes suivis, chronologique, au lieu de l'accueil algorithmique.
+        // Imposé par l'URL d'entrée plutôt qu'en JS : une redirection répétée en boucle
+        // risquerait de se battre avec le routeur d'Instagram et de figer la page.
+        private const val INSTAGRAM_FEED_URL = "https://www.instagram.com/?variant=following"
         private const val ANTIGRAVITY_URL = "https://accounts.google.com/AccountChooser?Email=joshuanancey%40gmail.com&continue=https%3A%2F%2Fantigravity.google.com%2Fr%2F8fdefe5a-83a4-439f-9225-a025f4dcdee9-v2"
         private const val NOTIFICATION_PERMISSION_CODE = 1001
 
@@ -71,6 +77,12 @@ class MainActivity : AppCompatActivity() {
             // Comutec / CVthèque & UTC
             "comutec.org",
             "utc.fr",
+            // Instagram + ses CDN/hôtes de connexion (les médias sont filtrés plus bas,
+            // mais les domaines doivent rester joignables pour le login et le HTML.)
+            "instagram.com",
+            "cdninstagram.com",
+            "fbcdn.net",
+            "facebook.com",
             // Antigravity Remote Control + services d'authentification Google
             "antigravity.google",
             "gstatic.com",
@@ -99,6 +111,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnNavNovethic: Button
     private lateinit var btnNavBerserk: Button
     private lateinit var btnNavComutec: Button
+    private lateinit var btnNavInstagram: Button
     private lateinit var btnNavAntigravity: Button
 
     private var webViewBasePaddingBottom: Int = 0
@@ -254,6 +267,7 @@ class MainActivity : AppCompatActivity() {
         btnNavNovethic = findViewById(R.id.btnNavNovethic)
         btnNavBerserk = findViewById(R.id.btnNavBerserk)
         btnNavComutec = findViewById(R.id.btnNavComutec)
+        btnNavInstagram = findViewById(R.id.btnNavInstagram)
         btnNavAntigravity = findViewById(R.id.btnNavAntigravity)
 
         findViewById<View>(R.id.btnGoBack).setOnClickListener {
@@ -276,6 +290,7 @@ class MainActivity : AppCompatActivity() {
         btnNavNovethic.setOnClickListener { webView.loadUrl(NOVETHIC_URL) }
         btnNavBerserk.setOnClickListener { webView.loadUrl(BERSERK_URL) }
         btnNavComutec.setOnClickListener { webView.loadUrl(COMUTEC_URL) }
+        btnNavInstagram.setOnClickListener { webView.loadUrl(INSTAGRAM_FEED_URL) }
         btnNavAntigravity.setOnClickListener { webView.loadUrl(ANTIGRAVITY_URL) }
     }
 
@@ -342,6 +357,69 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Instagram est le seul site de cette app dont on coupe images et vidéos.
+     */
+    private fun isCurrentUrlInstagram(urlToCheck: String = currentMainUrl): Boolean {
+        return urlToCheck.contains("instagram.com") || urlToCheck.contains("cdninstagram.com")
+    }
+
+    /**
+     * Vrai uniquement pour une vraie ressource média (photo/vidéo).
+     *
+     * On teste l'extension du *chemin* et non l'URL entière : Instagram sert ses
+     * bundles JS/CSS depuis static.cdninstagram.com, et un `url.contains(".png")`
+     * naïf finissait par tuer des scripts dont l'URL contenait ces caractères.
+     * Sans son JS, Instagram se charge mais reste figé sur l'accueil.
+     */
+    private fun isMediaResource(url: String): Boolean {
+        val path = try {
+            Uri.parse(url).path?.lowercase() ?: ""
+        } catch (e: Exception) {
+            return false
+        }
+        val mediaExtensions = listOf(
+            ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp",
+            ".mp4", ".webm", ".mov", ".m4v"
+        )
+        return mediaExtensions.any { path.endsWith(it) }
+    }
+
+    /**
+     * Hôtes qui ne servent QUE des médias — on peut les couper entièrement.
+     * Attention : ni `cdninstagram.com` ni `fbcdn.net` en entier, ils servent
+     * aussi le JS/CSS. Seuls les sous-domaines `scontent*` portent les photos.
+     */
+    private fun isMediaOnlyHost(url: String): Boolean {
+        val host = try {
+            Uri.parse(url).host?.lowercase() ?: return false
+        } catch (e: Exception) {
+            return false
+        }
+        return host.startsWith("scontent")
+    }
+
+    private fun isAudioRequest(request: WebResourceRequest): Boolean {
+        val headers = request.requestHeaders ?: emptyMap()
+        val secFetchDest = (headers["Sec-Fetch-Dest"] ?: headers["sec-fetch-dest"] ?: "").lowercase()
+        if (secFetchDest == "audio") return true
+
+        val accept = (headers["Accept"] ?: headers["accept"] ?: "").lowercase()
+        if (accept.contains("audio")) return true
+
+        val url = request.url.toString().lowercase()
+        return url.contains("audioclip") ||
+               url.contains("audio_clip") ||
+               url.contains("/audio") ||
+               url.contains("audio") ||
+               url.contains(".m4a") ||
+               url.contains(".aac") ||
+               url.contains(".mp3") ||
+               url.contains(".wav") ||
+               url.contains(".ogg") ||
+               url.contains("voice_message") ||
+               url.contains("voicenote")
+    }
 
     private inner class NoTubeWebViewClient : WebViewClient() {
 
@@ -377,6 +455,19 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            // Sur Instagram : on coupe images et vidéos pour ne garder que le texte.
+            // On autorise impérativement les messages oraux / vocaux (audio).
+            // Le JS et le CSS doivent passer, sinon Instagram (SPA React) reste figé.
+            if (isCurrentUrlInstagram(currentMainUrl)) {
+                if (isAudioRequest(request)) {
+                    android.util.Log.d(TAG_NAV, "ALLOWED audio resource on Instagram: $url")
+                    return super.shouldInterceptRequest(view, request)
+                }
+                if (isMediaOnlyHost(url) || isMediaResource(url)) {
+                    android.util.Log.d(TAG_AD, "BLOCKED media (site sans images): $url")
+                    return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream("".toByteArray()))
+                }
+            }
 
             return super.shouldInterceptRequest(view, request)
         }
@@ -403,7 +494,8 @@ class MainActivity : AppCompatActivity() {
             showProgress()
             errorOverlay.visibility = View.GONE
 
-
+            // Coupe le chargement des images côté WebView sur Instagram.
+            webView.settings.blockNetworkImage = isCurrentUrlInstagram(url)
         }
 
         override fun onPageFinished(view: WebView, url: String) {
