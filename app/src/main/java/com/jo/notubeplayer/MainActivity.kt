@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity() {
         private const val NOTUBE_URL = "https://notube.net/"
         private const val BERSERK_URL = "https://readberserk.com/"
         private const val NOVETHIC_URL = "https://www.novethic.fr/"
+        private const val COMUTEC_URL = "https://cvtheque.comutec.org/authenticated"
         private const val ANTIGRAVITY_URL = "https://accounts.google.com/AccountChooser?Email=joshuanancey%40gmail.com&continue=https%3A%2F%2Fantigravity.google.com%2Fr%2F8fdefe5a-83a4-439f-9225-a025f4dcdee9-v2"
         private const val NOTIFICATION_PERMISSION_CODE = 1001
 
@@ -67,6 +68,9 @@ class MainActivity : AppCompatActivity() {
             "axeptio.eu",
             "typekit.net",
             "use.typekit.net",
+            // Comutec / CVthèque & UTC
+            "comutec.org",
+            "utc.fr",
             // Antigravity Remote Control + services d'authentification Google
             "antigravity.google",
             "gstatic.com",
@@ -94,6 +98,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnNavNotube: Button
     private lateinit var btnNavNovethic: Button
     private lateinit var btnNavBerserk: Button
+    private lateinit var btnNavComutec: Button
     private lateinit var btnNavAntigravity: Button
 
     private var webViewBasePaddingBottom: Int = 0
@@ -248,6 +253,7 @@ class MainActivity : AppCompatActivity() {
         btnNavNotube = findViewById(R.id.btnNavNotube)
         btnNavNovethic = findViewById(R.id.btnNavNovethic)
         btnNavBerserk = findViewById(R.id.btnNavBerserk)
+        btnNavComutec = findViewById(R.id.btnNavComutec)
         btnNavAntigravity = findViewById(R.id.btnNavAntigravity)
 
         findViewById<View>(R.id.btnGoBack).setOnClickListener {
@@ -269,6 +275,7 @@ class MainActivity : AppCompatActivity() {
         btnNavNotube.setOnClickListener { loadNotube() }
         btnNavNovethic.setOnClickListener { webView.loadUrl(NOVETHIC_URL) }
         btnNavBerserk.setOnClickListener { webView.loadUrl(BERSERK_URL) }
+        btnNavComutec.setOnClickListener { webView.loadUrl(COMUTEC_URL) }
         btnNavAntigravity.setOnClickListener { webView.loadUrl(ANTIGRAVITY_URL) }
     }
 

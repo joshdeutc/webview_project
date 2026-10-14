@@ -6,6 +6,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build-release:
     runs-on: ubuntu-latest
@@ -48,3 +51,11 @@ jobs:
           name: webview-release-apks
           path: '**/build/outputs/apk/release/*.apk'
           retention-days: 14
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '**/build/outputs/apk/release/*.apk'
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
