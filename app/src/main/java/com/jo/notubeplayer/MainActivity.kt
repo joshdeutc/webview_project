@@ -49,6 +49,7 @@ class MainActivity : AppCompatActivity() {
         // Imposé par l'URL d'entrée plutôt qu'en JS : une redirection répétée en boucle
         // risquerait de se battre avec le routeur d'Instagram et de figer la page.
         private const val INSTAGRAM_FEED_URL = "https://www.instagram.com/?variant=following"
+        private const val GEMINI_URL = "https://gemini.google.com/app"
         private const val ANTIGRAVITY_URL = "https://accounts.google.com/AccountChooser?Email=joshuanancey%40gmail.com&continue=https%3A%2F%2Fantigravity.google.com%2Fr%2F8fdefe5a-83a4-439f-9225-a025f4dcdee9-v2"
         private const val NOTIFICATION_PERMISSION_CODE = 1001
 
@@ -87,7 +88,13 @@ class MainActivity : AppCompatActivity() {
             "antigravity.google",
             "gstatic.com",
             "googleapis.com",
-            "googleusercontent.com"
+            "googleusercontent.com",
+            // Gemini & Google AI (pour compagnon IA sans distraction)
+            "gemini.google.com",
+            "bard.google.com",
+            "deepmind.google",
+            "ai.google.dev",
+            "generativeai.google"
         )
 
         // Matche "notube.<tld>" et "<sous-domaine>.notube.<tld>", quel que soit le TLD,
@@ -112,6 +119,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnNavBerserk: Button
     private lateinit var btnNavComutec: Button
     private lateinit var btnNavInstagram: Button
+    private lateinit var btnNavGemini: Button
     private lateinit var btnNavAntigravity: Button
 
     private var webViewBasePaddingBottom: Int = 0
@@ -268,6 +276,7 @@ class MainActivity : AppCompatActivity() {
         btnNavBerserk = findViewById(R.id.btnNavBerserk)
         btnNavComutec = findViewById(R.id.btnNavComutec)
         btnNavInstagram = findViewById(R.id.btnNavInstagram)
+        btnNavGemini = findViewById(R.id.btnNavGemini)
         btnNavAntigravity = findViewById(R.id.btnNavAntigravity)
 
         findViewById<View>(R.id.btnGoBack).setOnClickListener {
@@ -291,6 +300,7 @@ class MainActivity : AppCompatActivity() {
         btnNavBerserk.setOnClickListener { webView.loadUrl(BERSERK_URL) }
         btnNavComutec.setOnClickListener { webView.loadUrl(COMUTEC_URL) }
         btnNavInstagram.setOnClickListener { webView.loadUrl(INSTAGRAM_FEED_URL) }
+        btnNavGemini.setOnClickListener { webView.loadUrl(GEMINI_URL) }
         btnNavAntigravity.setOnClickListener { webView.loadUrl(ANTIGRAVITY_URL) }
     }
 
@@ -305,7 +315,7 @@ class MainActivity : AppCompatActivity() {
             domStorageEnabled = true
             databaseEnabled = true
             allowFileAccess = false
-            allowContentAccess = false
+            allowContentAccess = true
             setSupportMultipleWindows(false)
             javaScriptCanOpenWindowsAutomatically = false
             setSupportZoom(true)
@@ -421,6 +431,36 @@ class MainActivity : AppCompatActivity() {
                url.contains("voicenote")
     }
 
+    /**
+     * Gemini : mode compagnon IA sans distraction (sans photo générée/web, sans vidéo).
+     */
+    private fun isCurrentUrlGemini(urlToCheck: String = currentMainUrl): Boolean {
+        val lower = urlToCheck.lowercase()
+        return lower.contains("gemini.google.com") || lower.contains("bard.google.com")
+    }
+
+    private fun isVideoRequest(request: WebResourceRequest): Boolean {
+        val headers = request.requestHeaders ?: emptyMap()
+        val secFetchDest = (headers["Sec-Fetch-Dest"] ?: headers["sec-fetch-dest"] ?: "").lowercase()
+        if (secFetchDest == "video") return true
+
+        val accept = (headers["Accept"] ?: headers["accept"] ?: "").lowercase()
+        if (accept.contains("video/")) return true
+
+        return false
+    }
+
+    private fun isVideoUrl(url: String): Boolean {
+        val lower = url.lowercase()
+        return lower.contains("googlevideo.com") ||
+               lower.contains("youtube.com/embed") ||
+               lower.contains("youtube-nocookie.com") ||
+               lower.endsWith(".mp4") ||
+               lower.endsWith(".webm") ||
+               lower.endsWith(".mov") ||
+               lower.endsWith(".m4v")
+    }
+
     private inner class NoTubeWebViewClient : WebViewClient() {
 
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
@@ -469,6 +509,14 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            // Sur Gemini : on coupe les flux vidéo (YouTube / HTML5 video) pour un compagnon IA sans vidéo
+            if (isCurrentUrlGemini(currentMainUrl)) {
+                if (isVideoRequest(request) || isVideoUrl(url)) {
+                    android.util.Log.d(TAG_AD, "BLOCKED video resource on Gemini: $url")
+                    return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream("".toByteArray()))
+                }
+            }
+
             return super.shouldInterceptRequest(view, request)
         }
 
@@ -479,6 +527,9 @@ class MainActivity : AppCompatActivity() {
                 android.util.Log.i(TAG_NAV, "ALLOW [$frameType] $url")
                 if (request.isForMainFrame) {
                     currentMainUrl = url
+                    if (isCurrentUrlGemini(url)) {
+                        injectGeminiDistractionFree(view)
+                    }
                 }
                 false
             } else {
@@ -504,6 +555,9 @@ class MainActivity : AppCompatActivity() {
             hideProgress()
             hideSplash()
             injectDarkModeEnhancements(view)
+            if (isCurrentUrlGemini(url)) {
+                injectGeminiDistractionFree(view)
+            }
             CookieManager.getInstance().flush()
         }
 
@@ -558,7 +612,11 @@ class MainActivity : AppCompatActivity() {
             fileUploadCallback?.onReceiveValue(null)
             fileUploadCallback = filePathCallback
 
-            val intent = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+            val intent = try {
+                fileChooserParams?.createIntent()
+            } catch (e: Exception) {
+                null
+            } ?: Intent(Intent.ACTION_GET_CONTENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "*/*"
             }
@@ -774,6 +832,100 @@ class MainActivity : AppCompatActivity() {
                         document.body.style.overflow = 'auto';
                         document.documentElement.style.overflow = 'auto';
                     }, 500);
+                }
+            })();
+        """.trimIndent()
+        view.evaluateJavascript(js, null)
+    }
+
+    /**
+     * Injecte le mode compagnon IA sans distraction sur Gemini :
+     * - Supprime toutes les vidéos, lecteurs et iframes (YouTube, etc.).
+     * - Supprime les images générées, photos web, carrousels et cartes dans les réponses.
+     * - Préserve les miniatures dans la zone d'envoi et les requêtes envoyées par l'utilisateur (upload fonctionnel).
+     */
+    private fun injectGeminiDistractionFree(view: WebView) {
+        val js = """
+            (function() {
+                var styleId = 'gemini-distraction-free-css';
+                if (!document.getElementById(styleId)) {
+                    var style = document.createElement('style');
+                    style.id = styleId;
+                    style.textContent = `
+                        /* Supprimer toutes les vidéos, lecteurs et iframes (YouTube, etc.) */
+                        video, iframe, model-viewer, youtube-video, .video-player, [data-test-id*="video"], [class*="video-player"] {
+                            display: none !important;
+                            visibility: hidden !important;
+                            pointer-events: none !important;
+                        }
+                        /* Supprimer les images générées, photos web, carrousels et cartes dans les réponses de Gemini */
+                        model-response img, model-response picture, message-content img, message-content picture,
+                        .model-response-text img, .response-container img, .markdown img, .markdown picture,
+                        .image-container, .image-wrapper, .generated-image, .media-carousel, .thumbnail-container,
+                        .grounding-image, div[data-test-id*="image"], div[data-test-id*="carousel"],
+                        div[class*="image-card"], div[class*="generated-image"], div[class*="media-container"] {
+                            display: none !important;
+                            visibility: hidden !important;
+                            height: 0 !important;
+                            min-height: 0 !important;
+                            padding: 0 !important;
+                            margin: 0 !important;
+                        }
+                        /* Préserver les miniatures dans la zone d'envoi et les requêtes envoyées par l'utilisateur */
+                        rich-textarea img, .attachment-container img, .input-area img, .uploader img,
+                        [class*="attachment"] img, [class*="preview"] img, [class*="upload"] img,
+                        user-query img, [class*="user-query"] img, [class*="chip"] img,
+                        button img, [role="button"] img {
+                            display: inline-block !important;
+                            visibility: visible !important;
+                            max-height: 80px !important;
+                            max-width: 80px !important;
+                            object-fit: cover !important;
+                            border-radius: 8px !important;
+                        }
+                    `;
+                    (document.head || document.documentElement).appendChild(style);
+                }
+
+                if (!window.__geminiSanitizerStarted) {
+                    window.__geminiSanitizerStarted = true;
+                    setInterval(function() {
+                        // Stopper et supprimer tout élément vidéo
+                        var vids = document.querySelectorAll('video');
+                        for (var i = 0; i < vids.length; i++) {
+                            try {
+                                vids[i].pause();
+                                vids[i].src = '';
+                                vids[i].remove();
+                            } catch(e) {}
+                        }
+
+                        // Supprimer les iframes vidéo ou YouTube
+                        var ifrs = document.querySelectorAll('iframe');
+                        for (var j = 0; j < ifrs.length; j++) {
+                            var f = ifrs[j];
+                            var s = (f.src || '').toLowerCase();
+                            if (s.indexOf('youtube') !== -1 || s.indexOf('youtu.be') !== -1 || s.indexOf('googlevideo') !== -1) {
+                                try {
+                                    f.src = '';
+                                    f.remove();
+                                } catch(e) {}
+                            }
+                        }
+
+                        // Cacher les images dans les réponses de Gemini et replier leurs conteneurs
+                        var resps = document.querySelectorAll('model-response, message-content, .model-response-text, .response-container');
+                        for (var k = 0; k < resps.length; k++) {
+                            var imgs = resps[k].querySelectorAll('img, picture');
+                            for (var m = 0; m < imgs.length; m++) {
+                                imgs[m].style.setProperty('display', 'none', 'important');
+                                var p = imgs[m].parentElement;
+                                if (p && p !== resps[k] && (p.children.length === 1 || (p.className && (p.className.indexOf('image') !== -1 || p.className.indexOf('media') !== -1 || p.className.indexOf('card') !== -1)))) {
+                                    p.style.setProperty('display', 'none', 'important');
+                                }
+                            }
+                        }
+                    }, 400);
                 }
             })();
         """.trimIndent()

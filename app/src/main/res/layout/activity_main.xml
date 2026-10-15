@@ -104,6 +104,15 @@
                 android:textColor="@color/white" />
 
             <Button
+                android:id="@+id/btnNavGemini"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="2dp"
+                android:text="@string/nav_gemini"
+                android:textColor="@color/white" />
+
+            <Button
                 android:id="@+id/btnNavAntigravity"
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"

@@ -13,6 +13,7 @@
     <string name="nav_berserk">Berserk</string>
     <string name="nav_comutec">CVthèque</string>
     <string name="nav_instagram">Instagram</string>
+    <string name="nav_gemini">Gemini</string>
     <string name="nav_antigravity">Antigravity</string>
     <string name="external_url_not_allowed">🚫 Le domaine \"%1$s\" n\'est pas dans votre liste autorisée.</string>
 </resources>
