@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val NOTUBE_URL = "https://notube.net/"
+        private const val GOOGLE_URL = "https://www.google.com/"
         private const val BERSERK_URL = "https://readberserk.com/"
         private const val NOVETHIC_URL = "https://www.novethic.fr/"
         private const val COMUTEC_URL = "https://cvtheque.comutec.org/authenticated"
@@ -70,6 +71,14 @@ class MainActivity : AppCompatActivity() {
             "consensu.org",
             "cloudflare.com",
             "google.com",
+            "google.fr",
+            // YouTube & flux vidéo
+            "youtube.com",
+            "youtu.be",
+            "googlevideo.com",
+            "ytimg.com",
+            "ggpht.com",
+            "youtube-nocookie.com",
             // Novethic & polices / consent
             "novethic.fr",
             "axeptio.eu",
@@ -115,6 +124,7 @@ class MainActivity : AppCompatActivity() {
 
     // Bottom Buttons
     private lateinit var btnNavNotube: Button
+    private lateinit var btnNavGoogle: Button
     private lateinit var btnNavNovethic: Button
     private lateinit var btnNavBerserk: Button
     private lateinit var btnNavComutec: Button
@@ -126,6 +136,7 @@ class MainActivity : AppCompatActivity() {
     private var progressAnimator: android.animation.ValueAnimator? = null
 
     private var currentMainUrl: String = ""
+    private val chromeClient = NoTubeChromeClient()
 
     private val downloadReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -272,6 +283,7 @@ class MainActivity : AppCompatActivity() {
         bottomMenuScroll = findViewById(R.id.bottomMenuScroll)
 
         btnNavNotube = findViewById(R.id.btnNavNotube)
+        btnNavGoogle = findViewById(R.id.btnNavGoogle)
         btnNavNovethic = findViewById(R.id.btnNavNovethic)
         btnNavBerserk = findViewById(R.id.btnNavBerserk)
         btnNavComutec = findViewById(R.id.btnNavComutec)
@@ -296,6 +308,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupScrollableMenu() {
         btnNavNotube.setOnClickListener { loadNotube() }
+        btnNavGoogle.setOnClickListener { webView.loadUrl(GOOGLE_URL) }
         btnNavNovethic.setOnClickListener { webView.loadUrl(NOVETHIC_URL) }
         btnNavBerserk.setOnClickListener { webView.loadUrl(BERSERK_URL) }
         btnNavComutec.setOnClickListener { webView.loadUrl(COMUTEC_URL) }
@@ -337,7 +350,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = NoTubeWebViewClient()
-        webView.webChromeClient = NoTubeChromeClient()
+        webView.webChromeClient = chromeClient
 
         webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             handleDownload(url, userAgent, contentDisposition, mimeType)
@@ -574,6 +587,9 @@ class MainActivity : AppCompatActivity() {
     private inner class NoTubeChromeClient : WebChromeClient() {
         private var customView: View? = null
         private var customViewCallback: CustomViewCallback? = null
+
+        fun isCustomViewShowing(): Boolean = customView != null
+        fun hideCustomView() = onHideCustomView()
 
         override fun onProgressChanged(view: WebView, newProgress: Int) {
             super.onProgressChanged(view, newProgress)
@@ -937,6 +953,9 @@ class MainActivity : AppCompatActivity() {
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         when {
+            chromeClient.isCustomViewShowing() -> {
+                chromeClient.hideCustomView()
+            }
             blockedOverlay.visibility == View.VISIBLE -> {
                 blockedOverlay.visibility = View.GONE
                 loadNotube()
