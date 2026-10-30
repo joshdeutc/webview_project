@@ -24,14 +24,15 @@
         app:backgroundTint="@color/primary"
         app:fabSize="mini" />
 
-    <!-- Compteur de session, visible tant qu'une session est ouverte -->
+    <!-- Compteur de session, visible tant qu'une session est ouverte (place en bas a gauche pour ne pas masquer le header du site) -->
     <TextView
         android:id="@+id/timerIndicator"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="8dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
         android:background="@drawable/progress_gradient"
         android:paddingHorizontal="16dp"
         android:paddingVertical="8dp"
