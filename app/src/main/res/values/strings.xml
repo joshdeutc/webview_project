@@ -9,7 +9,6 @@
     <string name="download_failed">Échec du téléchargement</string>
     <string name="video_download_blocked">Le téléchargement de vidéos n\'est pas autorisé.</string>
     <string name="nav_notube">NoTube</string>
-    <string name="nav_google">Google</string>
     <string name="nav_novethic">Novethic</string>
     <string name="nav_berserk">Berserk</string>
     <string name="nav_comutec">CVthèque</string>
