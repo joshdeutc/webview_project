@@ -85,6 +85,9 @@ class MainActivity : AppCompatActivity() {
             "4chan.org",
 
             // Sites adultes / hypnose
+            "fetlife.com",
+            "fetlife.blog",
+            "fetimg.com",
             "hypnoporn.net",
             "hypnohub.net",
             "hypno.tube",
@@ -119,6 +122,8 @@ class MainActivity : AppCompatActivity() {
         )
 
         private val BLOCKED_KEYWORDS = listOf(
+            "fetlife",
+            "fetimg",
             "hypno",
             "hypnosis",
             "hypnotic",
@@ -568,13 +573,15 @@ class MainActivity : AppCompatActivity() {
                     hideProgress()
                 }
 
-                // Neutralisation dynamique complète des balises vidéo et audio côté DOM
+                // Neutralisation dynamique complète des médias (vidéo, audio, images) côté DOM
                 view.evaluateJavascript(
                     """
                     (function() {
                         try {
                             var style = document.createElement('style');
-                            style.textContent = 'video, audio, object[type*="video"], embed[type*="video"] { display: none !important; visibility: hidden !important; width: 0 !important; height: 0 !important; pointer-events: none !important; }';
+                            style.textContent = 'video, audio, object[type*="video"], embed[type*="video"] { display: none !important; visibility: hidden !important; width: 0 !important; height: 0 !important; pointer-events: none !important; } ' +
+                                'img:not([class*="captcha" i]):not([id*="captcha" i]):not([alt*="captcha" i]), picture { opacity: 0 !important; } ' +
+                                '[style*="background-image"]:not([class*="captcha" i]):not([id*="captcha" i]) { background-image: none !important; }';
                             (document.head || document.documentElement).appendChild(style);
                             function neutralize() {
                                 document.querySelectorAll('video, audio').forEach(function(v) {
@@ -804,10 +811,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // 3. Vérification des mots-clés dans le chemin ou la requête
-        val pathAndQuery = "$path?$query"
+        // 3. Vérification des mots-clés dans l'hôte, le chemin ou la requête
+        val fullTarget = "$host$path?$query"
         for (kw in BLOCKED_KEYWORDS) {
-            if (pathAndQuery.contains(kw)) {
+            if (fullTarget.contains(kw)) {
                 return Pair(true, "Contenu bloqué (mot-clé '$kw')")
             }
         }
@@ -863,20 +870,62 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun isImageResource(url: String, request: WebResourceRequest): Boolean {
+        if (request.isForMainFrame) return false
+
         val headers = request.requestHeaders ?: emptyMap()
+
+        // 1. Headers Sec-Fetch-Dest
         val secFetchDest = (headers["Sec-Fetch-Dest"] ?: headers["sec-fetch-dest"] ?: "").lowercase()
         if (secFetchDest == "image") return true
 
+        // 2. Header Accept
+        val accept = (headers["Accept"] ?: headers["accept"] ?: "").lowercase()
+        if (accept.startsWith("image/") || (accept.contains("image/") && !accept.contains("text/html"))) {
+            return true
+        }
+
+        // Si c'est un script, une feuille de style ou un fichier de police/JSON, ne pas bloquer comme image
         val path = try { Uri.parse(url).path?.lowercase() ?: "" } catch (_: Exception) { "" }
+        val nonImageExtensions = listOf(".js", ".css", ".json", ".woff", ".woff2", ".ttf", ".otf", ".map")
+        if (nonImageExtensions.any { path.endsWith(it) }) {
+            return false
+        }
+
+        // 3. Host / CDN d'images connus
+        val host = try { Uri.parse(url).host?.lowercase() ?: "" } catch (_: Exception) { "" }
+        if (host.contains("licdn.com") || host.contains("fetimg.com") || host.contains("pinimg.com") ||
+            host.contains("imgur.com") || host.contains("twimg.com") || host.contains("gravatar.com") ||
+            host.contains("fbcdn.net") || host.contains("cdninstagram.com") ||
+            (host.contains("googleusercontent.com") && !url.contains("recaptcha"))
+        ) {
+            return true
+        }
+
+        val lowerUrl = url.lowercase()
+
+        // 4. Extensions d'images (à la fin du chemin ou avec paramètres de transformation)
         val imageExtensions = listOf(
-            ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".avif", ".tif", ".tiff"
+            ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".avif", ".tif", ".tiff", ".svg", ".ico"
         )
-        return imageExtensions.any { path.endsWith(it) }
+        if (imageExtensions.any { ext ->
+                path.endsWith(ext) || lowerUrl.contains("$ext?") || lowerUrl.contains("$ext/") || lowerUrl.contains("$ext&")
+            }) {
+            return true
+        }
+
+        // 5. Motifs d'URL typiques des serveurs d'images / photos CDN
+        if (path.contains("/dms/image") || path.contains("/images/") || path.contains("/img/") ||
+            path.contains("/photos/") || path.contains("/photo/") || path.contains("/avatars/") ||
+            path.contains("/avatar/") || path.contains("/profile-displayphoto") ||
+            lowerUrl.contains("format=jpg") || lowerUrl.contains("format=png") || lowerUrl.contains("format=webp")
+        ) {
+            return true
+        }
+
+        return false
     }
 
     private fun isMediaResource(url: String, request: WebResourceRequest): Boolean {
-        if (isImageResource(url, request)) return true
-
         val headers = request.requestHeaders ?: emptyMap()
         val secFetchDest = (headers["Sec-Fetch-Dest"] ?: headers["sec-fetch-dest"] ?: "").lowercase()
         if (secFetchDest == "video" || secFetchDest == "audio") return true
