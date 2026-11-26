@@ -43,15 +43,14 @@ class MainActivity : AppCompatActivity() {
         private const val BERSERK_URL = "https://readberserk.com/"
         private const val NOVETHIC_URL = "https://www.novethic.fr/"
         private const val COMUTEC_URL = "https://cvtheque.comutec.org/authenticated"
-        private const val INSTAGRAM_URL = "https://www.instagram.com/"
-
-        // Le fil des comptes suivis, chronologique, au lieu de l'accueil algorithmique.
-        // Imposé par l'URL d'entrée plutôt qu'en JS : une redirection répétée en boucle
-        // risquerait de se battre avec le routeur d'Instagram et de figer la page.
-        private const val INSTAGRAM_FEED_URL = "https://www.instagram.com/?variant=following"
+        private const val MESSENGER_URL = "https://www.messenger.com/"
         private const val GEMINI_URL = "https://gemini.google.com/app"
         private const val ANTIGRAVITY_URL = "https://accounts.google.com/AccountChooser?Email=joshuanancey%40gmail.com&continue=https%3A%2F%2Fantigravity.google.com%2Fr%2F8fdefe5a-83a4-439f-9225-a025f4dcdee9-v2"
         private const val NOTIFICATION_PERMISSION_CODE = 1001
+
+        // User-Agent Desktop requis pour Messenger Web (avec un UA mobile, messenger.com
+        // masque le formulaire de connexion et facebook.com/messages redirige vers l'app native).
+        private const val DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
         // Logging tags — filter with: adb logcat -s NTP_NAV,NTP_BLOCK,NTP_INTENT,NTP_AD
         private const val TAG_NAV     = "NTP_NAV"
@@ -78,12 +77,16 @@ class MainActivity : AppCompatActivity() {
             // Comutec / CVthèque & UTC
             "comutec.org",
             "utc.fr",
-            // Instagram + ses CDN/hôtes de connexion (les médias sont filtrés plus bas,
-            // mais les domaines doivent rester joignables pour le login et le HTML.)
-            "instagram.com",
-            "cdninstagram.com",
-            "fbcdn.net",
+            // Messenger / Facebook + ses CDN/hôtes de connexion et pièces jointes audio
+            // (les images et vidéos sont filtrées plus bas, mais ces domaines doivent rester
+            // joignables pour le login, le JS/CSS et les messages vocaux.)
+            "messenger.com",
             "facebook.com",
+            "fbcdn.net",
+            "fbsbx.com",
+            "meta.com",
+            "fb.com",
+            "m.me",
             // Antigravity Remote Control + services d'authentification Google
             "antigravity.google",
             "gstatic.com",
@@ -95,6 +98,27 @@ class MainActivity : AppCompatActivity() {
             "deepmind.google",
             "ai.google.dev",
             "generativeai.google"
+        )
+
+        private val CAPTCHA_DOMAINS = listOf(
+            "hcaptcha.com",
+            "recaptcha.net",
+            "arkoselabs.com",
+            "funcaptcha.com",
+            "geetest.com"
+        )
+
+        // 1x1 transparent PNG pour remplacer les images bloquées sans casser la mise en page
+        private val EMPTY_1X1_PNG = byteArrayOf(
+            0x89.toByte(), 0x50.toByte(), 0x4E.toByte(), 0x47.toByte(), 0x0D.toByte(), 0x0A.toByte(), 0x1A.toByte(), 0x0A.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x0D.toByte(), 0x49.toByte(), 0x48.toByte(), 0x44.toByte(), 0x52.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x01.toByte(), 0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x01.toByte(),
+            0x08.toByte(), 0x06.toByte(), 0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x1F.toByte(), 0x15.toByte(), 0xC4.toByte(),
+            0x89.toByte(), 0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x0A.toByte(), 0x49.toByte(), 0x44.toByte(), 0x41.toByte(),
+            0x54.toByte(), 0x78.toByte(), 0x9C.toByte(), 0x63.toByte(), 0x00.toByte(), 0x01.toByte(), 0x00.toByte(), 0x00.toByte(),
+            0x05.toByte(), 0x00.toByte(), 0x01.toByte(), 0x0D.toByte(), 0x0A.toByte(), 0x2D.toByte(), 0xB4.toByte(), 0x00.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x49.toByte(), 0x45.toByte(), 0x4E.toByte(), 0x44.toByte(), 0xAE.toByte(),
+            0x42.toByte(), 0x60.toByte(), 0x82.toByte()
         )
 
         // Matche "notube.<tld>" et "<sous-domaine>.notube.<tld>", quel que soit le TLD,
@@ -118,13 +142,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnNavNovethic: Button
     private lateinit var btnNavBerserk: Button
     private lateinit var btnNavComutec: Button
-    private lateinit var btnNavInstagram: Button
+    private lateinit var btnNavMessenger: Button
     private lateinit var btnNavGemini: Button
     private lateinit var btnNavAntigravity: Button
 
     private var webViewBasePaddingBottom: Int = 0
     private var progressAnimator: android.animation.ValueAnimator? = null
 
+    private var defaultMobileUserAgent: String = ""
     private var currentMainUrl: String = ""
     private val chromeClient = NoTubeChromeClient()
 
@@ -234,7 +259,7 @@ class MainActivity : AppCompatActivity() {
 
         android.util.Log.i(TAG_INTENT, "ALLOWED external intent: $url")
 
-        webView.loadUrl(url)
+        loadUrlWithSettings(url)
         return true
     }
 
@@ -276,7 +301,7 @@ class MainActivity : AppCompatActivity() {
         btnNavNovethic = findViewById(R.id.btnNavNovethic)
         btnNavBerserk = findViewById(R.id.btnNavBerserk)
         btnNavComutec = findViewById(R.id.btnNavComutec)
-        btnNavInstagram = findViewById(R.id.btnNavInstagram)
+        btnNavMessenger = findViewById(R.id.btnNavMessenger)
         btnNavGemini = findViewById(R.id.btnNavGemini)
         btnNavAntigravity = findViewById(R.id.btnNavAntigravity)
 
@@ -297,16 +322,29 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupScrollableMenu() {
         btnNavNotube.setOnClickListener { loadNotube() }
-        btnNavNovethic.setOnClickListener { webView.loadUrl(NOVETHIC_URL) }
-        btnNavBerserk.setOnClickListener { webView.loadUrl(BERSERK_URL) }
-        btnNavComutec.setOnClickListener { webView.loadUrl(COMUTEC_URL) }
-        btnNavInstagram.setOnClickListener { webView.loadUrl(INSTAGRAM_FEED_URL) }
-        btnNavGemini.setOnClickListener { webView.loadUrl(GEMINI_URL) }
-        btnNavAntigravity.setOnClickListener { webView.loadUrl(ANTIGRAVITY_URL) }
+        btnNavNovethic.setOnClickListener { loadUrlWithSettings(NOVETHIC_URL) }
+        btnNavBerserk.setOnClickListener { loadUrlWithSettings(BERSERK_URL) }
+        btnNavComutec.setOnClickListener { loadUrlWithSettings(COMUTEC_URL) }
+        btnNavMessenger.setOnClickListener { loadUrlWithSettings(MESSENGER_URL) }
+        btnNavGemini.setOnClickListener { loadUrlWithSettings(GEMINI_URL) }
+        btnNavAntigravity.setOnClickListener { loadUrlWithSettings(ANTIGRAVITY_URL) }
     }
 
     private fun loadNotube() {
-        webView.loadUrl(NOTUBE_URL)
+        loadUrlWithSettings(NOTUBE_URL)
+    }
+
+    private fun applySettingsForUrl(url: String) {
+        val desiredUa = if (isCurrentUrlMessenger(url)) DESKTOP_USER_AGENT else defaultMobileUserAgent
+        if (desiredUa.isNotEmpty() && webView.settings.userAgentString != desiredUa) {
+            webView.settings.userAgentString = desiredUa
+        }
+    }
+
+    private fun loadUrlWithSettings(url: String) {
+        currentMainUrl = url
+        applySettingsForUrl(url)
+        webView.loadUrl(url)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -327,9 +365,13 @@ class MainActivity : AppCompatActivity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             cacheMode = WebSettings.LOAD_DEFAULT
             mediaPlaybackRequiresUserGesture = false
+            // Les médias sur Messenger/Facebook sont filtrés dynamiquement dans shouldInterceptRequest
+            // et côté DOM/Blob pour préserver les captchas de connexion et les icônes UI statiques.
+            blockNetworkImage = false
 
             val currentAgent = userAgentString ?: ""
-            userAgentString = currentAgent.replace("; wv", "")
+            defaultMobileUserAgent = currentAgent.replace("; wv", "")
+            userAgentString = defaultMobileUserAgent
         }
 
         CookieManager.getInstance().apply {
@@ -348,11 +390,11 @@ class MainActivity : AppCompatActivity() {
     private fun isUrlAllowed(url: String): Boolean {
         return try {
             val uri = Uri.parse(url)
-            val host = uri.host?.lowercase() ?: return false
             val scheme = uri.scheme?.lowercase()
             if (scheme == "about" || scheme == "data" || scheme == "javascript" || scheme == "blob") {
                 return true
             }
+            val host = uri.host?.lowercase() ?: return false
             // NoTube fait tourner ses domaines en permanence (notube.net/.io/.li/.land/.im/.app/...)
             // pour échapper aux blocages. On autorise donc tout TLD "notube.<xx>" (et ses
             // sous-domaines) pour que le flux de conversion/téléchargement ne casse pas à chaque
@@ -362,26 +404,105 @@ class MainActivity : AppCompatActivity() {
             }
             ALLOWED_DOMAINS.any { domain ->
                 host == domain || host.endsWith(".$domain")
-            }
+            } || isCaptchaDomain(host)
         } catch (e: Exception) {
             false
         }
     }
 
+    private fun getHeaderIgnoreCase(request: WebResourceRequest, name: String): String {
+        val headers = request.requestHeaders ?: return ""
+        return headers.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value ?: ""
+    }
+
+    private fun isCaptchaDomain(host: String): Boolean {
+        return CAPTCHA_DOMAINS.any { domain ->
+            host == domain || host.endsWith(".$domain")
+        }
+    }
+
+    private fun isCaptchaRequest(url: String, request: WebResourceRequest): Boolean {
+        val lowerUrl = url.lowercase()
+        val host = try { Uri.parse(url).host?.lowercase() ?: "" } catch (_: Exception) { "" }
+        val path = try { Uri.parse(url).path?.lowercase() ?: "" } catch (_: Exception) { "" }
+
+        if (isCaptchaDomain(host)) return true
+
+        if (path.contains("captcha") ||
+            path.contains("recaptcha") ||
+            path.contains("hcaptcha") ||
+            path.contains("turnstile") ||
+            path.contains("challenge-platform") ||
+            lowerUrl.contains("captcha") ||
+            lowerUrl.contains("recaptcha")
+        ) {
+            return true
+        }
+
+        val lowerReferer = getHeaderIgnoreCase(request, "Referer").lowercase()
+        return lowerReferer.contains("recaptcha") ||
+            lowerReferer.contains("hcaptcha") ||
+            lowerReferer.contains("turnstile") ||
+            lowerReferer.contains("arkoselabs") ||
+            lowerReferer.contains("captcha")
+    }
+
     /**
-     * Instagram est le seul site de cette app dont on coupe images et vidéos.
+     * Messenger / Facebook : mode texte + vocaux uniquement (images et vidéos bloquées,
+     * UA Desktop actif pour permettre la connexion et le chat web).
      */
-    private fun isCurrentUrlInstagram(urlToCheck: String = currentMainUrl): Boolean {
-        return urlToCheck.contains("instagram.com") || urlToCheck.contains("cdninstagram.com")
+    private fun isCurrentUrlMessenger(urlToCheck: String = currentMainUrl): Boolean {
+        val host = try {
+            Uri.parse(urlToCheck).host?.lowercase() ?: ""
+        } catch (_: Exception) {
+            ""
+        }
+        return host == "messenger.com" || host.endsWith(".messenger.com") ||
+               host == "facebook.com" || host.endsWith(".facebook.com") ||
+               host == "fb.com" || host.endsWith(".fb.com") ||
+               host == "m.me" || host.endsWith(".m.me") ||
+               host == "meta.com" || host.endsWith(".meta.com")
+    }
+
+    /**
+     * Ressources statiques d'interface (JS, CSS, sprites d'icônes et emojis Unicode)
+     * servies par `static.*.fbcdn.net/rsrc.php/` ou `/images/emoji.php/`.
+     * Ne contiennent jamais de photos utilisateur ni de stickers.
+     */
+    private fun isMessengerStaticUiAsset(url: String): Boolean {
+        return try {
+            val uri = Uri.parse(url)
+            val host = uri.host?.lowercase() ?: return false
+            val path = uri.path?.lowercase() ?: return false
+            host.startsWith("static.") && host.endsWith(".fbcdn.net") &&
+                (path.startsWith("/rsrc.php/") || path.startsWith("/images/emoji.php/"))
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun isImageRequest(request: WebResourceRequest): Boolean {
+        if (request.isForMainFrame) return false
+        val secFetchDest = getHeaderIgnoreCase(request, "Sec-Fetch-Dest").lowercase()
+        if (secFetchDest == "image") return true
+        if (secFetchDest == "document" || secFetchDest == "iframe" ||
+            secFetchDest == "script" || secFetchDest == "style" ||
+            secFetchDest == "font" || secFetchDest == "worker" ||
+            secFetchDest == "sharedworker" || secFetchDest == "serviceworker"
+        ) {
+            return false
+        }
+        val accept = getHeaderIgnoreCase(request, "Accept").lowercase()
+        if (accept.startsWith("text/html")) return false
+        return accept.startsWith("image/")
     }
 
     /**
      * Vrai uniquement pour une vraie ressource média (photo/vidéo).
      *
-     * On teste l'extension du *chemin* et non l'URL entière : Instagram sert ses
-     * bundles JS/CSS depuis static.cdninstagram.com, et un `url.contains(".png")`
-     * naïf finissait par tuer des scripts dont l'URL contenait ces caractères.
-     * Sans son JS, Instagram se charge mais reste figé sur l'accueil.
+     * On teste l'extension du *chemin* et non l'URL entière : Meta sert ses
+     * bundles JS/CSS depuis static.xx.fbcdn.net, et un `url.contains(".png")`
+     * naïf risquerait de casser des scripts dont l'URL contiendrait ces caractères.
      */
     private fun isMediaResource(url: String): Boolean {
         val path = try {
@@ -390,16 +511,18 @@ class MainActivity : AppCompatActivity() {
             return false
         }
         val mediaExtensions = listOf(
-            ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp",
+            ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".bmp",
             ".mp4", ".webm", ".mov", ".m4v"
         )
         return mediaExtensions.any { path.endsWith(it) }
     }
 
     /**
-     * Hôtes qui ne servent QUE des médias — on peut les couper entièrement.
-     * Attention : ni `cdninstagram.com` ni `fbcdn.net` en entier, ils servent
-     * aussi le JS/CSS. Seuls les sous-domaines `scontent*` portent les photos.
+     * Hôtes dédiés aux aperçus/images (jamais de JS/CSS ni de messages vocaux E2EE).
+     * Note : on ne coupe pas tout `scontent*` / `cdn.fbsbx.com` sur les requêtes `fetch`
+     * chiffrées (E2EE) afin de laisser passer les vocaux chiffrés ; les photos/vidéos non
+     * chiffrées sont coupées via `isImageRequest`/`isMediaResource`/`isVideoRequest`, et les
+     * photos/vidéos E2EE déchiffrées sont bloquées côté Blob/DOM par `injectMessengerMediaBlocker`.
      */
     private fun isMediaOnlyHost(url: String): Boolean {
         val host = try {
@@ -407,15 +530,23 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             return false
         }
-        return host.startsWith("scontent")
+        return host.startsWith("external") || host == "lookaside.fbsbx.com"
+    }
+
+    private fun isVideoOnlyHost(url: String): Boolean {
+        val host = try {
+            Uri.parse(url).host?.lowercase() ?: return false
+        } catch (e: Exception) {
+            return false
+        }
+        return host.startsWith("video")
     }
 
     private fun isAudioRequest(request: WebResourceRequest): Boolean {
-        val headers = request.requestHeaders ?: emptyMap()
-        val secFetchDest = (headers["Sec-Fetch-Dest"] ?: headers["sec-fetch-dest"] ?: "").lowercase()
+        val secFetchDest = getHeaderIgnoreCase(request, "Sec-Fetch-Dest").lowercase()
         if (secFetchDest == "audio") return true
 
-        val accept = (headers["Accept"] ?: headers["accept"] ?: "").lowercase()
+        val accept = getHeaderIgnoreCase(request, "Accept").lowercase()
         if (accept.contains("audio")) return true
 
         val url = request.url.toString().lowercase()
@@ -428,6 +559,7 @@ class MainActivity : AppCompatActivity() {
                url.contains(".mp3") ||
                url.contains(".wav") ||
                url.contains(".ogg") ||
+               url.contains(".opus") ||
                url.contains("voice_message") ||
                url.contains("voicenote")
     }
@@ -441,11 +573,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun isVideoRequest(request: WebResourceRequest): Boolean {
-        val headers = request.requestHeaders ?: emptyMap()
-        val secFetchDest = (headers["Sec-Fetch-Dest"] ?: headers["sec-fetch-dest"] ?: "").lowercase()
+        val secFetchDest = getHeaderIgnoreCase(request, "Sec-Fetch-Dest").lowercase()
         if (secFetchDest == "video") return true
 
-        val accept = (headers["Accept"] ?: headers["accept"] ?: "").lowercase()
+        val accept = getHeaderIgnoreCase(request, "Accept").lowercase()
         if (accept.contains("video/")) return true
 
         return false
@@ -453,13 +584,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun isVideoUrl(url: String): Boolean {
         val lower = url.lowercase()
+        val path = try {
+            Uri.parse(url).path?.lowercase() ?: ""
+        } catch (_: Exception) {
+            ""
+        }
         return lower.contains("googlevideo.com") ||
                lower.contains("youtube.com/embed") ||
                lower.contains("youtube-nocookie.com") ||
-               lower.endsWith(".mp4") ||
-               lower.endsWith(".webm") ||
-               lower.endsWith(".mov") ||
-               lower.endsWith(".m4v")
+               path.endsWith(".mp4") ||
+               path.endsWith(".webm") ||
+               path.endsWith(".mov") ||
+               path.endsWith(".m4v") ||
+               path.endsWith(".m3u8") ||
+               path.endsWith(".mpd")
     }
 
     private inner class NoTubeWebViewClient : WebViewClient() {
@@ -496,17 +634,27 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Sur Instagram : on coupe images et vidéos pour ne garder que le texte.
-            // On autorise impérativement les messages oraux / vocaux (audio).
-            // Le JS et le CSS doivent passer, sinon Instagram (SPA React) reste figé.
-            if (isCurrentUrlInstagram(currentMainUrl)) {
-                if (isAudioRequest(request)) {
-                    android.util.Log.d(TAG_NAV, "ALLOWED audio resource on Instagram: $url")
+            // Sur Messenger / Facebook : on coupe images et vidéos pour ne garder que le texte
+            // et les messages vocaux (audio). Le JS, le CSS, les captchas et les icônes UI
+            // statiques (rsrc.php / emoji.php) passent pour ne pas casser l'interface.
+            if (!request.isForMainFrame && isCurrentUrlMessenger(currentMainUrl)) {
+                if (isCaptchaRequest(url, request)) {
                     return super.shouldInterceptRequest(view, request)
                 }
-                if (isMediaOnlyHost(url) || isMediaResource(url)) {
-                    android.util.Log.d(TAG_AD, "BLOCKED media (site sans images): $url")
-                    return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream("".toByteArray()))
+                if (isAudioRequest(request)) {
+                    android.util.Log.d(TAG_NAV, "ALLOWED audio resource on Messenger: $url")
+                    return super.shouldInterceptRequest(view, request)
+                }
+                if (isMessengerStaticUiAsset(url)) {
+                    return super.shouldInterceptRequest(view, request)
+                }
+                if (isVideoRequest(request) || isVideoUrl(url) || isVideoOnlyHost(url)) {
+                    android.util.Log.d(TAG_AD, "BLOCKED video on Messenger: $url")
+                    return WebResourceResponse("text/plain", "UTF-8", ByteArrayInputStream(ByteArray(0)))
+                }
+                if (isImageRequest(request) || isMediaOnlyHost(url) || isMediaResource(url)) {
+                    android.util.Log.d(TAG_AD, "BLOCKED media on Messenger: $url")
+                    return WebResourceResponse("image/png", "UTF-8", ByteArrayInputStream(EMPTY_1X1_PNG))
                 }
             }
 
@@ -527,8 +675,17 @@ class MainActivity : AppCompatActivity() {
             return if (isUrlAllowed(url)) {
                 android.util.Log.i(TAG_NAV, "ALLOW [$frameType] $url")
                 if (request.isForMainFrame) {
+                    val desiredUa = if (isCurrentUrlMessenger(url)) DESKTOP_USER_AGENT else defaultMobileUserAgent
+                    val uaChanged = desiredUa.isNotEmpty() && view.settings.userAgentString != desiredUa
                     currentMainUrl = url
-                    if (isCurrentUrlGemini(url)) {
+                    if (uaChanged && !request.isRedirect && request.method.equals("GET", ignoreCase = true)) {
+                        view.settings.userAgentString = desiredUa
+                        view.loadUrl(url)
+                        return true
+                    }
+                    if (isCurrentUrlMessenger(url)) {
+                        injectMessengerMediaBlocker(view)
+                    } else if (isCurrentUrlGemini(url)) {
                         injectGeminiDistractionFree(view)
                     }
                 }
@@ -545,9 +702,10 @@ class MainActivity : AppCompatActivity() {
             android.util.Log.i(TAG_NAV, "PAGE_START $url")
             showProgress()
             errorOverlay.visibility = View.GONE
-
-            // Coupe le chargement des images côté WebView sur Instagram.
-            webView.settings.blockNetworkImage = isCurrentUrlInstagram(url)
+            applySettingsForUrl(url)
+            if (isCurrentUrlMessenger(url)) {
+                injectMessengerMediaBlocker(view)
+            }
         }
 
         override fun onPageFinished(view: WebView, url: String) {
@@ -556,7 +714,9 @@ class MainActivity : AppCompatActivity() {
             hideProgress()
             hideSplash()
             injectDarkModeEnhancements(view)
-            if (isCurrentUrlGemini(url)) {
+            if (isCurrentUrlMessenger(url)) {
+                injectMessengerMediaBlocker(view)
+            } else if (isCurrentUrlGemini(url)) {
                 injectGeminiDistractionFree(view)
             }
             CookieManager.getInstance().flush()
@@ -585,6 +745,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onShowCustomView(view: View, callback: CustomViewCallback) {
+            if (isCurrentUrlMessenger(currentMainUrl) || isCurrentUrlGemini(currentMainUrl)) {
+                callback.onCustomViewHidden()
+                return
+            }
             customView = view
             customViewCallback = callback
             val decorView = window.decorView as FrameLayout
@@ -837,6 +1001,180 @@ class MainActivity : AppCompatActivity() {
                         document.documentElement.style.overflow = 'auto';
                     }, 500);
                 }
+            })();
+        """.trimIndent()
+        view.evaluateJavascript(js, null)
+    }
+
+    /**
+     * Neutralise images et vidéos sur Messenger / Facebook (y compris médias chiffrés E2EE
+     * chargés en `blob:` ou `data:image`, avatars SVG `<image>`, stickers et Reels) tout en
+     * préservant les messages vocaux (`<audio>`), les captchas de connexion et les icônes UI
+     * statiques (`rsrc.php` / `emoji.php`).
+     */
+    private fun injectMessengerMediaBlocker(view: WebView) {
+        val js = """
+            (function() {
+                try {
+                    var styleId = 'messenger-media-blocker-css';
+                    if (!document.getElementById(styleId)) {
+                        var style = document.createElement('style');
+                        style.id = styleId;
+                        style.textContent = `
+                            video, [role="presentation"] video {
+                                display: none !important;
+                                visibility: hidden !important;
+                                width: 0 !important;
+                                height: 0 !important;
+                                max-height: 0 !important;
+                                pointer-events: none !important;
+                            }
+                            img:not([src*="captcha" i]):not([alt*="captcha" i]):not([class*="captcha" i]):not([id*="captcha" i]):not([src*="rsrc.php"]):not([src*="emoji.php"]),
+                            picture,
+                            svg image {
+                                display: none !important;
+                                visibility: hidden !important;
+                                opacity: 0 !important;
+                                width: 0 !important;
+                                height: 0 !important;
+                                pointer-events: none !important;
+                            }
+                        `;
+                        (document.head || document.documentElement).appendChild(style);
+                    }
+
+                    if (!window.__messengerMediaBlockerInstalled) {
+                        window.__messengerMediaBlockerInstalled = true;
+
+                        var BLANK_IMG = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+                        // Intercepter les Blobs image/* déchiffrés en E2EE avant création d'URL blob:
+                        if (window.URL && typeof window.URL.createObjectURL === 'function') {
+                            var origCreateObjectURL = window.URL.createObjectURL;
+                            window.URL.createObjectURL = function(obj) {
+                                try {
+                                    if (obj && typeof obj.type === 'string' && obj.type.toLowerCase().indexOf('image/') === 0) {
+                                        return BLANK_IMG;
+                                    }
+                                } catch (e) {}
+                                return origCreateObjectURL.apply(this, arguments);
+                            };
+                        }
+
+                        // Empêcher toute lecture de <video> sans jamais toucher à <audio> (messages vocaux)
+                        if (window.HTMLVideoElement && HTMLVideoElement.prototype) {
+                            HTMLVideoElement.prototype.play = function() {
+                                try {
+                                    this.pause();
+                                    this.muted = true;
+                                    this.removeAttribute('src');
+                                    this.src = '';
+                                    this.srcObject = null;
+                                } catch (e) {}
+                                return Promise.resolve();
+                            };
+                        }
+
+                        function isExemptImage(el) {
+                            var src = (el.getAttribute('src') || el.currentSrc || '').toLowerCase();
+                            var alt = (el.getAttribute('alt') || '').toLowerCase();
+                            var cls = (el.className || '').toString().toLowerCase();
+                            var id = (el.id || '').toLowerCase();
+                            return src.indexOf('captcha') !== -1 ||
+                                   alt.indexOf('captcha') !== -1 ||
+                                   cls.indexOf('captcha') !== -1 ||
+                                   id.indexOf('captcha') !== -1 ||
+                                   src.indexOf('rsrc.php') !== -1 ||
+                                   src.indexOf('emoji.php') !== -1;
+                        }
+
+                        function neutralizeMedia() {
+                            // 1. Neutraliser toutes les vidéos (sans .remove() pour ne pas casser React)
+                            var vids = document.querySelectorAll('video');
+                            for (var v = 0; v < vids.length; v++) {
+                                var vid = vids[v];
+                                try {
+                                    if (!vid.paused) vid.pause();
+                                    if (!vid.muted) vid.muted = true;
+                                    if (vid.getAttribute('src')) {
+                                        vid.removeAttribute('src');
+                                        vid.src = '';
+                                    }
+                                    if (vid.srcObject) {
+                                        vid.srcObject = null;
+                                    }
+                                    if (vid.style.display !== 'none') {
+                                        vid.style.setProperty('display', 'none', 'important');
+                                    }
+                                } catch (e) {}
+                            }
+
+                            // 2. Neutraliser les <img> (y compris blob: / data:image E2EE)
+                            var imgs = document.querySelectorAll('img');
+                            for (var i = 0; i < imgs.length; i++) {
+                                var img = imgs[i];
+                                if (isExemptImage(img)) continue;
+                                try {
+                                    var cur = img.getAttribute('src') || '';
+                                    if (img.hasAttribute('srcset')) {
+                                        img.removeAttribute('srcset');
+                                    }
+                                    if (cur && cur !== BLANK_IMG) {
+                                        img.setAttribute('src', BLANK_IMG);
+                                    }
+                                    if (img.style.display !== 'none') {
+                                        img.style.setProperty('display', 'none', 'important');
+                                    }
+                                } catch (e) {}
+                            }
+
+                            // 3. Neutraliser les avatars/photos rendus via <svg><image xlink:href="..."/></svg>
+                            var svgImgs = document.querySelectorAll('svg image');
+                            for (var s = 0; s < svgImgs.length; s++) {
+                                var simg = svgImgs[s];
+                                try {
+                                    if (simg.hasAttribute('href')) simg.removeAttribute('href');
+                                    if (simg.hasAttribute('xlink:href')) simg.removeAttribute('xlink:href');
+                                    if (simg.style.display !== 'none') {
+                                        simg.style.setProperty('display', 'none', 'important');
+                                    }
+                                } catch (e) {}
+                            }
+
+                            // 4. Neutraliser les background-image hors icônes UI statiques (rsrc.php/emoji.php) et captchas
+                            var bgEls = document.querySelectorAll('[style*="background-image"]');
+                            for (var b = 0; b < bgEls.length; b++) {
+                                var el = bgEls[b];
+                                var bg = el.style.backgroundImage || '';
+                                if (!bg || bg === 'none') continue;
+                                var lowBg = bg.toLowerCase();
+                                if (lowBg.indexOf('rsrc.php') !== -1 ||
+                                    lowBg.indexOf('emoji.php') !== -1 ||
+                                    lowBg.indexOf('captcha') !== -1) {
+                                    continue;
+                                }
+                                el.style.setProperty('background-image', 'none', 'important');
+                            }
+                        }
+
+                        var scheduled = false;
+                        function scheduleNeutralize() {
+                            if (scheduled) return;
+                            scheduled = true;
+                            setTimeout(function() {
+                                scheduled = false;
+                                neutralizeMedia();
+                            }, 50);
+                        }
+
+                        neutralizeMedia();
+                        var observer = new MutationObserver(scheduleNeutralize);
+                        if (document.documentElement) {
+                            observer.observe(document.documentElement, { childList: true, subtree: true });
+                        }
+                        setInterval(neutralizeMedia, 500);
+                    }
+                } catch (e) {}
             })();
         """.trimIndent()
         view.evaluateJavascript(js, null)
